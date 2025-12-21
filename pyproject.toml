@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ua-nemo"
+version = "0.1.0"
+description = "Parses nodeset XML files and resolves relations. "
+readme = "README.md"
+authors= [{name = "Andreas Engh Halvorsen"}]
+requires-python = ">=3.10"
+dependencies = [
+    "lxml",
+    "pandas"
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+ua_nemo = [
+    "typelibraries/**/*"
+]

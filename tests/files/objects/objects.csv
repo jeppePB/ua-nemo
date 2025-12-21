@@ -1,0 +1,7 @@
+nodeid,nodetype,browsename,DisplayName,type_namespace
+ns=1;s=MyEnterprise,StlS95EnterpriseType,MyEnterprise,MyEnterprise,EntTypes
+ns=1;s=TestObject,StlS95FieldType,TestObject,TestObject,EntTypes
+ns=1;s=TestObject.System1,StlS95FieldType,System1,System1,EntTypes
+ns=1;s=TestObject.System1.VarA,TwoStateDiscreteType,VarA,VarA,UA
+ns=1;s=TestObject.System1.VarB,TwoStateDiscreteType,VarB,VarB,UA
+ns=1;s=TestObject.System1.VarC,TwoStateDiscreteType,VarC,VarC,UA

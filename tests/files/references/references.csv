@@ -1,0 +1,11 @@
+source_node,target_node,reference_type,type_namespace,IsForward
+ns=1;s=MyEnterprise,i=85,Organizes,UA,False
+ns=1;s=TestObject,ns=1;s=MyEnterprise,MadeUpOfEquipment,UA_2013_01_ISA95,False
+ns=1;s=TestObject.System1,ns=1;s=TestObject,MadeUpOfEquipment,UA_2013_01_ISA95,False
+ns=1;s=TestObject.System1,ns=1;s=TestObject.System1.VarA,HasComponent,EntTypes,
+ns=1;s=TestObject.System1,ns=1;s=TestObject.System1.VarB,HasComponent,EntTypes,
+ns=1;s=TestObject.System1,ns=1;s=TestObject.System1.VarC,HasComponent,EntTypes,
+ns=1;s=TestObject.System1.VarA,i=63,HasTypeDefinition,EntTypes,
+ns=1;s=TestObject.System1.VarA,i=63,HasTypeDefinition,EntTypes,
+ns=1;s=TestObject.System1.VarB,i=63,HasTypeDefinition,EntTypes,
+ns=1;s=TestObject.System1.VarC,i=63,HasTypeDefinition,EntTypes,

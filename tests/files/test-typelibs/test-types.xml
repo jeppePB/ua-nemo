@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UANodeSet xmlns="http://opcfoundation.org/UA/2011/03/UANodeSet.xsd">
+  <!-- Declare namespace(s) -->
+  <NamespaceUris>
+    <Uri>http://yourcompany.com/test-types/</Uri>
+  </NamespaceUris>
+
+  <!-- Aliases -->
+  <Aliases>
+    <Alias Alias="HasSubtype">i=45</Alias>
+    <Alias Alias="BaseObjectType">i=58</Alias>
+    <Alias Alias="BaseDataVariableType">i=63</Alias>
+    <Alias Alias="PropertyType">i=68</Alias>
+    <Alias Alias="HasProperty">i=46</Alias>
+  </Aliases>
+
+  <!-- Custom ObjectType -->
+  <UAObjectType NodeId="ns=1;s=MyCustomObjectType" BrowseName="1:MyCustomObjectType" IsAbstract="false">
+    <DisplayName>MyCustomObjectType</DisplayName>
+    <References>
+      <Reference ReferenceType="HasSubtype" IsForward="false">BaseObjectType</Reference>
+    </References>
+  </UAObjectType>
+
+  <!-- Optional Property on the ObjectType -->
+  <UAVariable NodeId="ns=1;s=MyCustomObjectType.OptionalProperty" 
+              BrowseName="1:OptionalProperty" 
+              ParentNodeId="ns=1;s=MyCustomObjectType"
+              DataType="i=12" 
+              ValueRank="-1" 
+              ModellingRule="Optional">
+    <DisplayName>OptionalProperty</DisplayName>
+    <References>
+      <Reference ReferenceType="HasTypeDefinition">PropertyType</Reference>
+      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;s=MyCustomObjectType</Reference>
+    </References>
+  </UAVariable>
+
+  <!-- Custom VariableType -->
+  <UAVariableType NodeId="ns=1;s=MyCustomVariableType" 
+                  BrowseName="1:MyCustomVariableType" 
+                  IsAbstract="false" 
+                  DataType="i=12" 
+                  ValueRank="-1">
+    <DisplayName>MyCustomVariableType</DisplayName>
+    <References>
+      <Reference ReferenceType="HasSubtype" IsForward="false">BaseDataVariableType</Reference>
+    </References>
+  </UAVariableType>
+
+  <!-- Optional Property on the VariableType -->
+  <UAVariable NodeId="ns=1;s=MyCustomVariableType.OptionalUnit" 
+              BrowseName="1:OptionalUnit" 
+              ParentNodeId="ns=1;s=MyCustomVariableType"
+              DataType="i=12" 
+              ValueRank="-1" 
+              ModellingRule="Optional">
+    <DisplayName>OptionalUnit</DisplayName>
+    <References>
+      <Reference ReferenceType="HasTypeDefinition">PropertyType</Reference>
+      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;s=MyCustomVariableType</Reference>
+    </References>
+  </UAVariable>
+</UANodeSet>

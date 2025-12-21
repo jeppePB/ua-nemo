@@ -1,0 +1,6 @@
+- IF HISTORIZING IS TRUE, SET ACCESSLEVEL TO MINIMUM 5. Although maybe not always?
+    - Access levels:
+        1 (0x01)	CurrentRead	Read the Current Value
+        2 (0x02)	CurrentWrite	Write the Current Value
+        4 (0x04)	HistoryRead	Read the Historical Value(s)
+        8 (0x08)	HistoryWrite	Insert Historical Value(s)
