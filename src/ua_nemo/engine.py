@@ -1,6 +1,5 @@
-
-
 from pathlib import Path
+
 from .node_model import NodeId, Namespace
 from .type_instantiator import TypeInstantiator
 from .xml_loader import TypeLibraryXMLLoader

@@ -1,5 +1,4 @@
 from __future__ import annotations
-import copy
 from enum import Enum
 
 from . import node_definitions
@@ -46,20 +45,6 @@ class NodeId:
     def __hash__(self):
         return hash((self.ns_index, self.id_type, self.id))
    
-    @classmethod
-    def from_string_old(cls, raw:str) -> "NodeId":
-        ns_index = 0
-        value = None
-        if "ns=" in raw:
-            idx, value = raw.split(";", 1)
-            ns_index = int(idx.split("=")[1])
-        else:
-            if "i=" in raw:
-                value = raw
-            else:
-                raise ValueError("Invalid NodeId")
-        return cls(ns_index, value) 
-          
     @classmethod
     def from_string(cls, raw:str) -> "NodeId":
         raw = raw.strip()

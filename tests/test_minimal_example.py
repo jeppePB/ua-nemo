@@ -5,7 +5,7 @@ import pandas as pd
 from ua_nemo.engine import ModelBuilderEngine
 from ua_nemo.node_model import NodeId, Namespace, TypeNode
 from ua_nemo.type_instantiator import TypeInstantiator
-from ua_nemo.utils import load_nodes, load_objects, load_relations, normalize_bool
+from ua_nemo.utils import normalize_bool
 from ua_nemo.xml_builder import dump_model_to_xml_streaming
 from ua_nemo.xml_loader import TypeLibraryXMLLoader
 
@@ -24,6 +24,30 @@ TEST_URI = "http://www.MyDevelopmentNodeset.com/DEVELOPMENT/"
 
 engine : ModelBuilderEngine = None
 
+def load_objects(obj_path:Path|None):
+
+    df_list = []
+    if obj_path is None:
+        obj_path = Path.cwd() / "objects"
+    for file in obj_path.iterdir():
+        df_list.append(pd.read_csv(file))
+    return pd.concat(df_list, ignore_index=True)
+
+def load_relations(ref_path:Path|None):
+    df_list = []
+    if ref_path is None:
+        ref_path = Path.cwd() / "references"
+    for file in ref_path.iterdir():
+        df_list.append(pd.read_csv(file))
+    df = pd.concat(df_list, ignore_index=True)
+    df.fillna("", inplace=True)
+    return df
+
+def load_nodes():
+    objects = load_objects()
+    relations = load_relations()
+
+    return objects, relations
 
 def create_nodes(model:Namespace, objects:pd.DataFrame, relations:pd.DataFrame):
     global engine

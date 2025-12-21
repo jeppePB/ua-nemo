@@ -1,6 +1,4 @@
-from pathlib import Path
-import pandas as pd
-from .node_definitions import NodeClass, resolve_node_class, get_expected_attributes, get_expected_subnodes
+from .node_definitions import NodeClass, get_expected_attributes, get_expected_subnodes
 
 def normalize_bool(input_string:str) -> bool:
     #! Hacky fix
@@ -47,28 +45,3 @@ def split_node_fields(node_class: NodeClass, raw: dict) -> tuple[dict, dict]:
             else:
                 attrs[k] = v  # fallback
     return attrs, subs
-
-def load_objects(obj_path:Path|None):
-
-    df_list = []
-    if obj_path is None:
-        obj_path = Path.cwd() / "objects"
-    for file in obj_path.iterdir():
-        df_list.append(pd.read_csv(file))
-    return pd.concat(df_list, ignore_index=True)
-
-def load_relations(ref_path:Path|None):
-    df_list = []
-    if ref_path is None:
-        ref_path = Path.cwd() / "references"
-    for file in ref_path.iterdir():
-        df_list.append(pd.read_csv(file))
-    df = pd.concat(df_list, ignore_index=True)
-    df.fillna("", inplace=True)
-    return df
-
-def load_nodes():
-    objects = load_objects()
-    relations = load_relations()
-
-    return objects, relations

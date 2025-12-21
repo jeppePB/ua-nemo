@@ -1,7 +1,7 @@
 from pathlib import Path
 
 import xml.etree.ElementTree as ET
-from .node_model import Node, Namespace, NamespaceContext, NodeId, ReferenceNode
+from .node_model import Node, Namespace, NodeId
 
 from .node_definitions import NodeClass, resolve_node_class
 from .utils import split_node_fields
