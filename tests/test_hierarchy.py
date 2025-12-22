@@ -17,6 +17,3 @@ def test_classify_hierarchical_references():
     assert hierarchical_references_node.base_type == hierarchical_references_node.node_id
     assert organizes_node.base_type == organizes_node.node_id
     assert modelling_rule_node.base_type is None
-
-def test_get_hierarchical_parent():
-    raise NotImplementedError()

@@ -2,7 +2,7 @@ from pathlib import Path
 
 import xml.etree.ElementTree as ET
 from .node_model import Node, Namespace, NodeId
-
+from .protocols import AbstractContext
 from .node_definitions import NodeClass, resolve_node_class
 from .utils import split_node_fields
 
@@ -14,9 +14,13 @@ HAS_SUBTYPE = "i=45"
 class TypeLibraryXMLLoader:
 
     refs_to_classify:list[Node]
+    namespace_context : AbstractContext
+
+    def __init__(self, context:AbstractContext):
+        self.namespace_context = context
 
     def load(self, xml_path:Path) -> tuple[bool, dict|Path]:
-        model = Namespace()
+        model = Namespace(self.namespace_context)
         self.refs_to_classify = []
 
         ns = {'ua': 'http://opcfoundation.org/UA/2011/03/UANodeSet.xsd'}
@@ -223,10 +227,3 @@ class TypeLibraryXMLLoader:
             self.refs_to_classify.append(node)
 
         return node
-
-
-if __name__ == "__main__":
-    loader = TypeLibraryXMLLoader()
-    
-    
-    print("Success")

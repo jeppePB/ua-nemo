@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from .node_model import NodeId, Namespace
+from .node_model import NodeId, Namespace, NamespaceContext
 from .type_instantiator import TypeInstantiator
 from .xml_loader import TypeLibraryXMLLoader
 
@@ -9,10 +9,12 @@ class ModelBuilderEngine:
     
     typelibraries : dict[str, Namespace]
     __type_instantiators : dict
-    
+    namespace_context : NamespaceContext
+
     def __init__(self):
         self.typelibraries = {}
         self.__type_instantiators = {}
+        self.namespace_context = NamespaceContext()
 
     def load_typelibraries(
             self, 
@@ -25,15 +27,13 @@ class ModelBuilderEngine:
             dir_path (Path, optional): Path to directory containing typelibrary files. Defaults to None.
             file_list (list[Path | str], optional): List of files to load. Defaults to None.
         """
-        loader = TypeLibraryXMLLoader()
+        loader = TypeLibraryXMLLoader(self.namespace_context)
         if dir_path:
             self.typelibraries = loader.load_from_path(dir_path)
         elif file_list:
             self.typelibraries = loader.load_from_file_list(file_list)
         else:
             self.typelibraries = loader.load_from_file_list([])
-
-
 
     def get_typelibrary(self, typelib_name : str) -> Namespace:
         typelib_model = self.typelibraries.get(typelib_name)

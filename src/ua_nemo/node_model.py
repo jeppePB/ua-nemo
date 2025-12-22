@@ -3,6 +3,7 @@ from enum import Enum
 
 from . import node_definitions
 from .node_definitions import NodeClass
+from .protocols import AbstractContext
 
 class NodeIdType(Enum):
     NUMERIC = "i"
@@ -309,11 +310,10 @@ class NamespaceContext:
 class Namespace:
     #TODO Add ".from_nodeset" function to load nodemodels from files
     
-    _default_namespace_context: NamespaceContext = None
     _uri: str
 
     namespace_array: list
-    namespace_context: NamespaceContext = None
+    namespace_context: AbstractContext = None
     aliases: dict[str, NodeId]
     is_type_namespace: bool
     name: str
@@ -321,7 +321,7 @@ class Namespace:
 
     ns_info: dict
 
-    def __init__(self, namespace_context:NamespaceContext = None):
+    def __init__(self, namespace_context:AbstractContext = None):
         self.name = None
         self._uri = None
         self.is_type_namespace = False
@@ -330,12 +330,7 @@ class Namespace:
         self.namespace_array = []
         self.ns_info = {}
         
-        if namespace_context is None:
-            if Namespace._default_namespace_context is None:
-                Namespace._default_namespace_context = NamespaceContext()
-            self.namespace_context = Namespace._default_namespace_context
-        else:
-            self.namespace_context = namespace_context
+        self.namespace_context = namespace_context
         
         self.aliases = {}
 

@@ -7,7 +7,6 @@ from ua_nemo.node_model import NodeId, Namespace, TypeNode
 from ua_nemo.type_instantiator import TypeInstantiator
 from ua_nemo.utils import normalize_bool
 from ua_nemo.xml_builder import dump_model_to_xml_streaming
-from ua_nemo.xml_loader import TypeLibraryXMLLoader
 
 
 TEST_FP = Path.cwd() / "tests" / "files"
@@ -97,7 +96,7 @@ def test_minimal_example():
     global engine
     engine = ModelBuilderEngine()
     engine.load_typelibraries(TYPELIB_PATH)
-    model = Namespace()
+    model = Namespace(namespace_context=engine.namespace_context)
     model.uri = TEST_URI
 
     objects = load_objects(OBJECTS_PATH)
