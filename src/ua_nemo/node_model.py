@@ -261,7 +261,7 @@ class NamespaceContext:
     #TODO Needs a cleanup, fairly sure this contains duplicate functionality
     namespace_dict: dict[str, Namespace] = {}
     namespace_dict_uri: dict[str, Namespace] = {}
-    known_models: list[Namespace] = []
+    known_models: list[str] = []    #TODO Check whether this can be removed
 
     #? Would I like to automatically load the ua nodeset here? 
     def register_model(self, model:Namespace):
@@ -353,7 +353,7 @@ class Namespace:
                 f"(URI={self._uri}, namespaces={ns_info}, nodes={len(self.nodes_by_id)})")
 
     @property
-    def uri(self):
+    def uri(self) -> str:
         return self._uri
     
     @uri.setter
