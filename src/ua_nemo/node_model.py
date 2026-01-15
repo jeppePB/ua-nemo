@@ -209,7 +209,7 @@ class Node:
     @property
     def node_uri(self) -> str:
         namespace_uri = self.namespace.uri
-        nid_id = self.node_id.id.replace("=","_")
+        nid_id = f"{self.node_id.id_type.value}_{self.node_id.id}"
         return f"{namespace_uri}#{nid_id}"
 
     @property
