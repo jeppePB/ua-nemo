@@ -4,3 +4,8 @@
         2 (0x02)	CurrentWrite	Write the Current Value
         4 (0x04)	HistoryRead	Read the Historical Value(s)
         8 (0x08)	HistoryWrite	Insert Historical Value(s)
+
+- Node currently requires a lot of stuff in its initializer (full nid + bn + class + ns).
+    Should fix that.
+
+- BrowseName should return a ns idx as well (1, 'MyBrowseName')
