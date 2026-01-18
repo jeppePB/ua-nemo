@@ -8,13 +8,14 @@ class NamespaceContext:
     #TODO Needs a cleanup, fairly sure this contains duplicate functionality
     namespace_dict: dict[str, Namespace] = {}
     namespace_dict_uri: dict[str, Namespace] = {}
-    known_models: list[Namespace] = []
 
     #? Would I like to automatically load the ua nodeset here? 
     def register_model(self, model:Namespace):
+        if model.name and model.name in self.namespace_dict:
+            raise ValueError(f'Namespace with name {model.name} already exists in namespace context.')
+
         self.namespace_dict[model.name] = model
         self.namespace_dict_uri[model.uri] = model
-        self.known_models.append(model.uri)
 
         if not model.name == "UA":
             ua_namespace = self.namespace_dict.get("UA")
