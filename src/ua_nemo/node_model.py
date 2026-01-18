@@ -160,24 +160,25 @@ class Node:
             browse_name:str, 
             node_class: NodeClass, 
             namespace:Namespace,
-            attributes:dict={}, 
-            subnodes:dict={},
+            attributes:dict=None, 
+            subnodes:dict=None,
             ):
         
         if not isinstance(node_id, NodeId):
             node_id = NodeId.from_string(node_id)
         
+        self.attributes = {} if attributes is None else attributes # XML attributes
+        self.subnodes = {} if subnodes is None else subnodes # Displayname, value etc.
+
         self.node_id = node_id
         self.browse_name = browse_name
         self.node_class = node_class
         self.references = []
-        self.attributes = attributes  # xml attributes
-        self.subnodes = subnodes # subnodes like displayname, value etc.
         self.namespace = namespace
         self.base_type = None
 
-        if not "DisplayName" in subnodes:
-            subnodes["DisplayName"] = browse_name
+        if not "DisplayName" in self.subnodes:
+            self.subnodes["DisplayName"] = browse_name
     
     def __repr__(self) -> str:
         cls_name = self.__class__.__name__
@@ -255,7 +256,7 @@ class Node:
     def add_reference(self, reference_type: str, target_nodeid: str, is_forward:bool=True):
         ref = Reference(reference_type, target_nodeid, is_forward, self)
         if ref not in self.references:
-            self.references.append(Reference(reference_type, target_nodeid, is_forward, self))
+            self.references.append(ref)
         
 class NamespaceContext:
     #TODO Needs a cleanup, fairly sure this contains duplicate functionality
