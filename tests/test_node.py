@@ -36,22 +36,77 @@ class FakeReference:
 
 
 @pytest.fixture
-def ns():
+def ns() -> FakeNamespace:
     return FakeNamespace(uri="urn:example")
 
-def test_create_node_str_nid(ns):
-    node_id = 'ns=1;s=test'
-
-    node = nm.Node(node_id, "test", NodeClass.Object, ns)
-
-    assert isinstance(node.node_id, nm.NodeId)
-    assert node.node_id.to_string() == node_id
 
 def test_create_node_nid_object(ns):
-    node_id = nm.NodeId.from_string('ns=1;s=test')
+    nid = nm.NodeId.from_string('ns=1;s=test')
 
-    node = nm.Node(node_id, 'test', NodeClass.Object, ns)
+    n = nm.Node(nid, 'test', NodeClass.Object, ns)
 
-    assert isinstance(node.node_id, nm.NodeId)
-    assert node.node_id == node_id
+    assert isinstance(n.node_id, nm.NodeId)
+    assert n.node_id == nid
+    assert n.is_object is True
+    assert n.is_variable is False
+
+def test_create_node_str_nid(ns):
+    nid = 'ns=1;s=test'
+
+    n = nm.Node(nid, "test", NodeClass.Object, ns)
+
+    assert isinstance(n.node_id, nm.NodeId)
+    assert n.node_id.to_string() == nid
+
+def test_display_name_defaulted(ns):
+    n = nm.Node('ns=1;s=1234', 'test', NodeClass.Object, ns)
+    assert n.display_name == 'test'
+    assert n.subnodes['DisplayName'] == 'test'
+
+def test_node_uri(ns):
+    n = nm.Node('ns=1;s=1234', 'test', NodeClass.Object, ns)
+    
+    assert n.node_uri.startswith('urn:example#')
+
+def test_type_definition_picks_i40(ns):
+    n = nm.Node("ns=1;i=1", "1:Foo", nm.NodeClass.Object, ns)
+    n.references.append(FakeReference("i=40", "ns=1;i=999", True, n))
+    assert n.type_definition == "ns=1;i=999"
+
+def test_type_uri_prefers_found_type_node(ns):
+    type_node = nm.Node("ns=1;i=999", "1:MyType", nm.NodeClass.ObjectType, ns)
+    ns.register("ns=1;i=999", type_node)
+
+    n = nm.Node("ns=1;i=1", "1:Foo", nm.NodeClass.Object, ns)
+    n.references.append(FakeReference("i=40", "ns=1;i=999", True, n))
+
+    assert n.type_uri == "urn:example#MyType"
+
+def test_hierarchical_children_parents(ns):
+    # Create a hierarchical ref-type node. For it to count as hierarchical in the current logic in
+    # get_hierarchical_references it needs to have the base_type set (to literally anything at all)
+    ref_type_node = nm.Node("i=200", "1:HasComponent", NodeClass.ReferenceType, ns)
+    ref_type_node.base_type = nm.NodeId.from_string("ns=0;i=33")
+    ns.register("i=200", ref_type_node)
+    ns._resolve_map["i=200"] = "i=200"
+
+    n = nm.Node("ns=1;i=1", "1:Foo", nm.NodeClass.Object, ns, subnodes={})
+    fwd = FakeReference("i=200", "ns=1;i=2", True, n)
+    bwd = FakeReference("i=200", "ns=1;i=3", False, n)
+    n.references.extend([fwd, bwd])
+
+    assert n.hierarchical_children == [fwd]
+    assert n.hierarchical_parents == [bwd]
+
+def test_add_reference_dedup(ns, monkeypatch):
+    monkeypatch.setattr(nm, "Reference", FakeReference)
+
+    n = nm.Node("ns=1;i=1", "1:Foo", nm.NodeClass.Object, ns)
+    n.add_reference("i=200", "ns=1;i=2", True)
+    n.add_reference("i=200", "ns=1;i=2", True)
+    assert len(n.references) == 1
+
+
+
+
 

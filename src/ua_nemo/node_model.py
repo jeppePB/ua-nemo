@@ -243,12 +243,18 @@ class Node:
         return self.subnodes.get("Value")
     
     def get_hierarchical_references(self, is_forward:bool) -> list[Reference]:
+        """Returns a list of hierarchical references in a given direction.
+        is_forward=False for parents
+        is_forward=True for children
+        """
+        
         hierarchical_refs = []
         for ref in self.references:
             if not ref.is_forward == is_forward:
                 continue
             ref_type = self.namespace.resolve(ref.reference_type)
             ref_type_node = self.namespace.find_by_nodeid(ref_type)
+            #TODO Base type is currently only set for hierarchical refs. Need to clean this up.
             if ref_type_node.base_type:
                 hierarchical_refs.append(ref)
         return hierarchical_refs
