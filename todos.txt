@@ -8,4 +8,5 @@
 - Node currently requires a lot of stuff in its initializer (full nid + bn + class + ns).
     Should fix that.
 
-- BrowseName should return a ns idx as well (1, 'MyBrowseName')
+- BrowseName should return a ns idx as well (1, 'MyBrowseName').
+ - When adding str browsename, do a maxsplit of 1 from left on :.
