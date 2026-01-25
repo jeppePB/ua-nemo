@@ -1,8 +1,29 @@
 from __future__ import annotations
 from enum import Enum
+from urllib.parse import urlparse
 
 from . import node_definitions
 from .node_definitions import NodeClass
+
+def derive_namespace_name(uri: str) -> str:
+    parsed = urlparse(uri)
+
+    # URNs: urn:yourcompany:test-types -> use everything after the scheme
+    # urlparse puts that in .path, possibly with additional ":" separators.
+    if parsed.scheme == "urn" and parsed.path:
+        return parsed.path.split(":")[-1].strip("/")
+
+    # URLs/opc.tcp/etc.: use path segments after host, joined with "_"
+    # This preserves "a/b/c" -> "a_b_c" behavior.
+    if parsed.netloc:
+        segments = [s for s in parsed.path.strip("/").split("/") if s]
+        if segments:
+            return "_".join(segments)
+        # No path -> fall back to host
+        return parsed.hostname or parsed.netloc.split(":")[0]
+
+    # Fallback: last segment of raw string
+    return uri.rstrip("/").split("/")[-1]
 
 class NodeIdType(Enum):
     NUMERIC = "i"
@@ -368,23 +389,27 @@ class Namespace:
         if self.uri:
             raise ValueError("Attempting to set URI of model that already has an URI set.")
         if uri is None:
-            return
+            raise ValueError("URI can not be set to None.")
         if not self.name:
-            split_uri = uri.strip("/").split("/")
-            is_url = False
-            for substr in split_uri:
-                if ".com" in substr or ".org" in substr:
-                    is_url = True
-                    break
-            if is_url:
-                com_idx = 0
-                for idx, substr in enumerate(split_uri):
-                    if ".com" in substr or ".org" in substr:
-                        com_idx = idx
-                self.name = "_".join(split_uri[com_idx+1:])
-            else:
-                self.name = uri.strip("/").split("/")[-1]
-        
+            #TODO Remove the whole 'name' concept. It's currently being used in the program logic,
+            # and that needs to stop.
+            
+            self.name = derive_namespace_name(uri)
+            # split_uri = uri.strip("/").split("/")
+            # is_url = False
+            # for substr in split_uri:
+            #     if ".com" in substr or ".org" in substr:
+            #         is_url = True
+            #         break
+            # if is_url:
+            #     com_idx = 0
+            #     for idx, substr in enumerate(split_uri):
+            #         if ".com" in substr or ".org" in substr:
+            #             com_idx = idx
+            #     self.name = "_".join(split_uri[com_idx+1:])
+            # else:
+            #     self.name = uri.strip("/").split("/")[-1]
+            
         self._uri = uri
         #TODO Remove separate handling of namespaces in model and global ns context
         self.namespace_context.register_model(self)
@@ -404,6 +429,7 @@ class Namespace:
             raise ValueError(f"Unknown alias or bad NodeId: {nodeid_or_alias}")
         
     def add_namespace(self, ns_uri: str):
+        #TODO Rewrite to accept actual Namespace objects.
         if ns_uri in self.namespace_array:
             return
         self.namespace_array.append(ns_uri)
