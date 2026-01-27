@@ -4,6 +4,7 @@ from urllib.parse import urlparse
 
 from . import node_definitions
 from .node_definitions import NodeClass
+from .types import QualifiedName
 
 def derive_namespace_name(uri: str) -> str:
     parsed = urlparse(uri)
@@ -157,7 +158,7 @@ class Node:
 
     namespace: Namespace
     node_id: NodeId
-    browse_name: str
+    browse_name: QualifiedName
     node_class: NodeClass
     references:list[Reference]
     attributes:dict
@@ -178,7 +179,7 @@ class Node:
     def __init__(
             self, 
             node_id: str|NodeId, 
-            browse_name:str, 
+            browse_name:str|QualifiedName, 
             node_class: NodeClass, 
             namespace:Namespace,
             attributes:dict=None, 
@@ -192,14 +193,17 @@ class Node:
         self.subnodes = {} if subnodes is None else subnodes # Displayname, value etc.
 
         self.node_id = node_id
-        self.browse_name = browse_name
+        if isinstance(browse_name, QualifiedName):
+            self.browse_name = browse_name
+        else:
+            self.browse_name = QualifiedName.from_string(browse_name, default_ns=1)
         self.node_class = node_class
         self.references = []
         self.namespace = namespace
         self.base_type = None
 
         if not "DisplayName" in self.subnodes:
-            self.subnodes["DisplayName"] = browse_name
+            self.subnodes["DisplayName"] = browse_name.name
     
     def __repr__(self) -> str:
         cls_name = self.__class__.__name__
@@ -207,6 +211,10 @@ class Node:
         return (f"{cls_name}(node_id={self.node_id!r}, "
                 f"browse_name={self.browse_name!r}, "
                 f"node_class={node_class!r})")
+    
+    @property
+    def browse_name_text(self) -> str:
+        return self.browse_name.to_string()
     
     @property
     def is_abstract(self) -> bool:
@@ -240,7 +248,7 @@ class Node:
         if not type_node and self.is_abstract:
             type_node = self
         type_namespace = type_node.namespace.uri
-        type_browsename = type_node.browse_name.split(":", 1)[-1]
+        type_browsename = type_node.browse_name.name
         return f"{type_namespace}#{type_browsename}"
     
     @property
@@ -489,10 +497,10 @@ class Namespace:
         return target_model.nodes_by_id.get(normalized_nid.to_string())
 
         
-    def find_by_browse_name(self, browse_name: str) -> list[Node]:
+    def find_by_browse_name(self, browse_name: str|QualifiedName) -> list[Node]:
         #TODO Clean this up
-        if not browse_name.startswith("1") and not self.name == "UA":
-            browse_name = f"1:{browse_name}"
+        if isinstance(browse_name, str):
+            browse_name = QualifiedName.from_string(browse_name)
         return self.nodes_by_browse_name.get(browse_name, [])
 
 class ReferenceNode(Node):

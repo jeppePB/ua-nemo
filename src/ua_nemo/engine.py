@@ -3,7 +3,7 @@ from pathlib import Path
 from .node_model import NodeId, Namespace
 from .type_instantiator import TypeInstantiator
 from .xml_loader import TypeLibraryXMLLoader
-
+from .types import QualifiedName
 
 class ModelBuilderEngine:
     
@@ -64,7 +64,7 @@ class ModelBuilderEngine:
         self.__type_instantiators[typelib_name] = instantiator
         return instantiator
     
-    def instantiate_node(self, typelib_name : str, target_model : Namespace, typename: str, node_id: str, browse_name: str, **kwargs) -> str:
+    def instantiate_node(self, typelib_name : str, target_model : Namespace, typename: str, node_id: str, browse_name: str|QualifiedName, **kwargs) -> str:
         instantiator = self.get_type_instantiator(typelib_name, target_model)
         instantiator.instantiate(typename, node_id, browse_name, **kwargs)
         return target_model.find_by_nodeid(node_id)
