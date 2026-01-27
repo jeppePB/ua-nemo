@@ -156,6 +156,7 @@ class Reference:
 class Node:
     __slots__ = ("node_id", "browse_name", "node_class", "references", "attributes", "subnodes", "namespace", "base_type")
 
+    _idx: int
     namespace: Namespace
     node_id: NodeId
     browse_name: QualifiedName
@@ -186,6 +187,7 @@ class Node:
             subnodes:dict=None,
             ):
         
+        self._idx = None
         if not isinstance(node_id, NodeId):
             node_id = NodeId.from_string(node_id)
         
@@ -345,6 +347,7 @@ class NamespaceContext:
 class Namespace:
     #TODO Add ".from_nodeset" function to load nodemodels from files
     
+    __next_node_idx: int
     _default_namespace_context: NamespaceContext = None
     _uri: str
 
@@ -362,6 +365,7 @@ class Namespace:
     def __init__(self, namespace_context:NamespaceContext = None):
         self.name = None
         self._uri = None
+        self.__next_node_idx = 0
         self.is_type_namespace = False
         self.nodes_by_id = {}
         self.nodes_by_browse_name = {}
@@ -389,6 +393,11 @@ class Namespace:
         ns_info = ", ".join(self.namespace_array) if self.namespace_array else "[]"
         return (f"NodeModel '{self.name}' "
                 f"(URI={self._uri}, namespaces={ns_info}, nodes={len(self.nodes_by_id)})")
+
+    def __assign_node_idx(self, node:Node) -> Node:
+        node._idx = self.__next_node_idx
+        self.__next_node_idx += 1
+        return node
 
     @property
     def uri(self) -> str:
@@ -447,8 +456,9 @@ class Namespace:
 
     def get_namespace_by_index(self, ns_idx: int) -> str:
         return self.namespace_array[ns_idx]
-
+    
     def add_node(self, node: Node):   
+        node = self.__assign_node_idx(node)
         self.nodes_by_id[node.node_id.to_string()] = node
         self.nodes_by_browse_name.setdefault(node.browse_name, []).append(node)
         
