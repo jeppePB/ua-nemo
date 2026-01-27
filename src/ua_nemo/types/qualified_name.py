@@ -26,7 +26,7 @@ class QualifiedName:
         if not s:
             return cls(default_ns, "")
         if ":" in s:
-            left, right = s.split(":")
+            left, right = s.split(":", 1)
             if left.isdigit():
                 return cls(int(left), right)
         return cls(default_ns, s)
