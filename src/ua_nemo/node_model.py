@@ -203,7 +203,7 @@ class Node:
         self.base_type = None
 
         if not "DisplayName" in self.subnodes:
-            self.subnodes["DisplayName"] = browse_name.name
+            self.subnodes["DisplayName"] = self.browse_name.name
     
     def __repr__(self) -> str:
         cls_name = self.__class__.__name__
@@ -352,6 +352,8 @@ class Namespace:
     namespace_context: NamespaceContext = None
     aliases: dict[str, NodeId]
     is_type_namespace: bool
+    is_ua_namespace: bool
+
     name: str
     nodes_by_id: dict[str, Node]
 
@@ -419,6 +421,7 @@ class Namespace:
             #     self.name = uri.strip("/").split("/")[-1]
             
         self._uri = uri
+        self.is_ua_namespace = self.name == "UA"
         #TODO Remove separate handling of namespaces in model and global ns context
         self.namespace_context.register_model(self)
     
@@ -500,7 +503,10 @@ class Namespace:
     def find_by_browse_name(self, browse_name: str|QualifiedName) -> list[Node]:
         #TODO Clean this up
         if isinstance(browse_name, str):
-            browse_name = QualifiedName.from_string(browse_name)
+            if self.is_ua_namespace:
+                browse_name = QualifiedName.from_string(browse_name)
+            else:
+                browse_name = QualifiedName.from_string(browse_name, 1)
         return self.nodes_by_browse_name.get(browse_name, [])
 
 class ReferenceNode(Node):
