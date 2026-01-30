@@ -312,7 +312,17 @@ class Node:
             if ref_type_node.base_type:
                 hierarchical_refs.append(ref)
         return hierarchical_refs
-                
+    
+    def get_child(self, child_browse_name: str|QualifiedName, handle_multiple:str="fail") -> Node:
+        """handle_multiple: strategy used when model has not been properly build and multiple
+        children have the same qualified name. 
+        Options:
+            - fail: raises AmbiguousChildError
+            - ignore: returns a list of matching nodes"""
+        if isinstance(child_browse_name, str):
+            child_browse_name = QualifiedName.from_string(child_browse_name)
+        return self.namespace.child_by_qname(self, child_browse_name, handle_multiple)
+    
     def add_reference(self, reference_type: str, target_nodeid: str, is_forward:bool=True):
         ref = Reference(reference_type, target_nodeid, is_forward, self)
         if self.namespace:
@@ -376,6 +386,7 @@ class Namespace:
     _next_node_idx: int
     _default_namespace_context: NamespaceContext = None
     _uri: str
+    _nsidx_model_cache: dict[int, Namespace]
 
     namespace_array: list
     namespace_context: NamespaceContext = None
@@ -399,6 +410,8 @@ class Namespace:
         self.name = None
         self._uri = None
         self._next_node_idx = 0
+        self._nsidx_model_cache = {}
+
         self.is_type_namespace = False
         
         # Canonical mappings
@@ -487,6 +500,11 @@ class Namespace:
                 q, []).append(c)
 
     def child_by_qname(self, parent: Node, qname:QualifiedName, handle_multiple:str="fail"):
+        """handle_multiple: strategy used when model has not been properly build and multiple
+        children have the same qualified name. 
+        Options:
+            - fail: raises AmbiguousChildError
+            - ignore: returns a list of matching nodes"""
         bucket = self.child_index.get(parent.minted_idx, {})
         indices = bucket.get(qname, [])
         if not indices:
@@ -535,10 +553,15 @@ class Namespace:
             nid = NodeId.from_string(f"ns=0;{nodeid_text}")
         self.aliases[alias_name] = nid
 
-    def _get_model_for_ns_index(self, ns_idx: int):
+    def _get_model_for_ns_index(self, ns_idx: int) -> Namespace:
+        ns = self._nsidx_model_cache.get(ns_idx, None)
+        if ns is not None:
+            return ns
         ns_uri = self.get_namespace_by_index(ns_idx)
-        return self.namespace_context.get_model_by_uri(ns_uri)
-
+        ns = self.namespace_context.get_model_by_uri(ns_uri)
+        self._nsidx_model_cache[ns_idx] = ns
+        return ns
+    
     def find_by_nodeid_v2(self, node_id: str | NodeId) -> Node|ReferenceNode:
         nid_str = node_id.to_string() if isinstance(node_id, NodeId) else node_id
         idx = self.nid_to_idx.get(nid_str)
