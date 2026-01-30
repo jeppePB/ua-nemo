@@ -18,10 +18,12 @@ class FakeNamespace:
         self.uri = uri
         self._nodes = {}          # nodeid -> Node
         self._resolve_map = {}    # ref_type -> nodeid (string or NodeId)
+        self.nid_to_idx = {}      # make sure nothing breaks when attempting to get idx of a node
 
     def register(self, nodeid, node):
         """Helper for tests: make find_by_nodeid return this node."""
         self._nodes[nodeid] = node
+        
 
     def find_by_nodeid(self, nodeid):
         return self._nodes.get(nodeid)
