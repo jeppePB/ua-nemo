@@ -562,41 +562,41 @@ class Namespace:
         self._nsidx_model_cache[ns_idx] = ns
         return ns
     
-    def find_by_nodeid_v2(self, node_id: str | NodeId) -> Node|ReferenceNode:
-        nid_str = node_id.to_string() if isinstance(node_id, NodeId) else node_id
-        idx = self.nid_to_idx.get(nid_str)
-        return None if idx is None else self.find_by_idx(idx)
-
-    def find_by_nodeid(self, node_id: str | NodeId) -> Node|ReferenceNode:
-        # Normalize
+    def find_by_nodeid(self, node_id: str | NodeId) -> Node:
+        # Fast path - ns is clearly local
+        if isinstance(node_id, str) and node_id.startswith("ns=1;"):
+            idx = self.nid_to_idx.get(node_id)
+            return None if idx is None else self.find_by_idx(idx)
+                
         nid = node_id if isinstance(node_id, NodeId) else NodeId.from_string(node_id)
         ns = nid.ns_index
 
-        # local
+        def _fast_lookup(model:"Namespace", nid_str: str) -> Node|None:
+            idx = model.nid_to_idx.get(nid_str)
+            return None if idx is None else model.find_by_idx(idx)
+        
+        # Local model, kept around just in case
         if ns == 1:
-            return self.nodes_by_id.get(nid.to_string())
-
+            nid_str = nid.to_string()
+            return _fast_lookup(self, nid_str)
+        
         # UA namespace
         if ns == 0:
-            if self.name == "UA":
-                return self.nodes_by_id.get(nid.to_string())
-            else:
-                target_model = self._get_model_for_ns_index(ns)
-                return target_model.nodes_by_id.get(nid.to_string())
+            if self.is_ua_namespace:
+                nid_str = nid.to_string()
+                return _fast_lookup(self, nid_str)
 
-        # Any other namespace: delegate
-        target_model = self._get_model_for_ns_index(ns)
+            target_model = self._get_model_for_ns_index(ns)  
+            nid_str = nid.to_string()
+            return _fast_lookup(target_model, nid_str)
         
-        # Normalize the nid to 1 as the node will be local to the target model
-        normalized_nid = NodeId(
-            ns_index=1,
-            id_type = nid.id_type,
-            id = nid.id
-        )
+        # Any other ns
+        target_model = self._get_model_for_ns_index(ns)
 
-        normalized_nid.ns_index = 1
-        return target_model.nodes_by_id.get(normalized_nid.to_string())
-
+        # Normalize to nodeid idx to 1 because that's how it's stored in target
+        normalized_nid = NodeId(1, nid.id_type, nid.id)
+        nid_str = normalized_nid.to_string()
+        return _fast_lookup(target_model, nid_str)
         
     def find_by_browse_name(self, browse_name: str|QualifiedName) -> list[Node]:
         #TODO Clean this up
@@ -606,18 +606,3 @@ class Namespace:
             else:
                 browse_name = QualifiedName.from_string(browse_name, 1)
         return self.nodes_by_browse_name.get(browse_name, [])
-
-class ReferenceNode(Node):
-    __slots__ = ("base_type",)
-
-    def __init__(self, base_type, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.base_type = base_type
-
-
-class TypeNode():
-    
-    browsename: str
-    
-    def __init__(self, type_namespace:str, browsename:str):
-        pass

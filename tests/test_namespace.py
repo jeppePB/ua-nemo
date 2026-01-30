@@ -144,6 +144,9 @@ def test_find_by_nodeid_ns0_delegates_to_ua_model():
     assert found is ua_node
 
 def test_find_by_nodeid_other_namespace_normalizes_to_ns1():
+    """
+    All nodes returned by find_by_nodeid get their ns normalized to 1 (except UA)
+    Add a test to make sure this behavior is consistent until a change is desired."""
     #Empty ua namespace to fill ns0
     ua = Namespace()
     ua.uri = "urn:UA"
@@ -152,7 +155,8 @@ def test_find_by_nodeid_other_namespace_normalizes_to_ns1():
     target.uri = "urn:target"
 
     # Node stored locally in target model with ns=1
-    target_node = Node("ns=1;i=500", "1:Thing", NodeClass.Object, target)
+    target_node_ns_string = "ns=1;i=500"
+    target_node = Node(target_node_ns_string, "1:Thing", NodeClass.Object, target)
     target.add_node(target_node)
 
     source = Namespace()
@@ -162,6 +166,7 @@ def test_find_by_nodeid_other_namespace_normalizes_to_ns1():
     # Ask source for ns=2;i=500, should be normalized to ns=1;i=500 in target
     found = source.find_by_nodeid("ns=2;i=500")
     assert found is target_node
+    assert found.node_id.to_string() == target_node_ns_string
 
 def test_find_by_browse_name_normalizes_for_non_ua():
     ns = Namespace()
@@ -230,15 +235,15 @@ def test_find_node_by_idx():
 
     assert ns.find_by_idx(0) == node
 
-def test_find_node_by_nodeid_v2():
-    #TODO Replace og find_by_nodeid with the v2 version
+def test_find_node_by_nodeid():
+    #TODO Replace og find_by_nodeid
     ns = Namespace()
     ns.uri = "urn:model1"
 
     node = Node("ns=1;i=1", "1:Foo", NodeClass.Object, ns)
     ns.add_node(node)
 
-    assert ns.find_by_nodeid_v2("ns=1;i=1") == node
+    assert ns.find_by_nodeid("ns=1;i=1") == node
 
     nid = NodeId.from_string("ns=1;i=1")
-    assert ns.find_by_nodeid_v2(nid) == node
+    assert ns.find_by_nodeid(nid) == node
