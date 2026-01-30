@@ -6,6 +6,9 @@ from . import node_definitions
 from .node_definitions import NodeClass
 from .types import QualifiedName
 
+class AmbiguousChildError(LookupError):
+    pass
+    
 def derive_namespace_name(uri: str) -> str:
     parsed = urlparse(uri)
 
@@ -482,6 +485,20 @@ class Namespace:
         c = child.minted_idx
         self.child_index.setdefault(p, {}).setdefault(
                 q, []).append(c)
+
+    def child_by_qname(self, parent: Node, qname:QualifiedName, handle_multiple:str="fail"):
+        bucket = self.child_index.get(parent.minted_idx, {})
+        indices = bucket.get(qname, [])
+        if not indices:
+            raise KeyError(qname)
+        if len(indices) > 1:
+            #log warning
+            print(f"Warning: Multiple children found for {qname}. Make sure nodes have only a single child per qualified name.")
+            if handle_multiple=="ignore":
+                return [self.nodes_by_idx[idx] for idx in indices]
+            else:
+                raise AmbiguousChildError(qname)
+        return self.nodes_by_idx(indices[0])
 
     def get_namespace_by_index(self, ns_idx: int) -> str:
         return self.namespace_array[ns_idx]

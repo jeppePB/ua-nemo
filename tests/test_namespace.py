@@ -190,15 +190,15 @@ def test_node_is_assigned_minted_idx():
     ns.uri = "urn:model1"
 
     node = Node("ns=1;i=1", "1:Foo", NodeClass.Object, ns)
-    assert node._idx is None
+    assert node.minted_idx is None
     ns.add_node(node)
-    assert node._idx == 0
+    assert node.minted_idx == 0
     assert ns._next_node_idx == 1
     
     node_two = Node("ns=1;i=100", "1:Foo", NodeClass.Object, ns)
-    assert node_two._idx is None
+    assert node_two.minted_idx is None
     ns.add_node(node_two)
-    assert node_two._idx == 1
+    assert node_two.minted_idx == 1
     assert ns._next_node_idx == 2
 
 def test_node_is_assigned_minted_idx_per_ns():
@@ -219,7 +219,7 @@ def test_node_is_assigned_minted_idx_per_ns():
     assert ns._next_node_idx == 1
     assert ns_2._next_node_idx == 2
     # Node should be assigned correct index
-    assert node_3._idx == 1
+    assert node_3.minted_idx == 1
 
 def test_find_node_by_idx():
     ns = Namespace()
