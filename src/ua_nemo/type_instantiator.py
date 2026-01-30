@@ -39,8 +39,8 @@ class TypeInstantiator:
             if ref.reference_type in ("HasComponent", "HasProperty", "HasOrderedComponent"):
                 child_type_node = self.typelib_model.find_by_nodeid(ref.target_nodeid)
                 if child_type_node and (self._is_mandatory(child_type_node) or include_optional):
-                    child_instance_id = f"{instance_nodeid}.{child_type_node.browse_name.split(':', 1)[-1]}"
-                    child_instance_browse = child_type_node.browse_name.split(":")[-1]
+                    child_instance_id = f"{instance_nodeid}.{child_type_node.browse_name.name}"
+                    child_instance_browse = child_type_node.browse_name
                     
                     # Recursive instantiation of child
                     self.instantiate(

@@ -105,7 +105,7 @@ def dump_model_to_xml_streaming(model:Namespace, file_path:Path):
                 tag = NODE_CLASSES[node.node_class]
                 node_attrs = {
                     "NodeId": node.node_id.to_string(),
-                    "BrowseName": node.attributes.get("BrowseName", node.browse_name),
+                    "BrowseName": node.browse_name.to_string(),
                 }
                 for key, val in node.attributes.items():
                     if key not in ("NodeId", "BrowseName"):
