@@ -1,7 +1,4 @@
-from ua_nemo.node_definitions import NodeClass
-from ua_nemo.node_model import Namespace, Node
 from ua_nemo.engine import ModelBuilderEngine
-from tests.test_minimal_example import TYPELIB_PATH
 
 def test_classify_hierarchical_references():
     engine = ModelBuilderEngine()
