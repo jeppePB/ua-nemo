@@ -108,11 +108,17 @@ class NodeId:
             return f"ns={self.ns_index};{self.id_type.value}={self.id}"
         
 class Reference:
-    __slots__ = ("reference_type", "target_nodeid", "is_forward", "source")
+    """
+    target_idx references the minted index for the Node. It is populated if the node the reference is pointing from
+    is in the same namespace as the node it is pointing to.
+    """
+    __slots__ = ("reference_type", "target_nodeid", "is_forward", "source", "target_idx")
     reference_type: str
     source_id: NodeId
     target_nodeid: NodeId
     is_forward: bool
+
+    target_idx: int | None
 
     def __repr__(self) -> str:
         cls = self.__class__.__name__
@@ -154,7 +160,17 @@ class Reference:
 
 
 class Node:
-    __slots__ = ("node_id", "browse_name", "node_class", "references", "attributes", "subnodes", "namespace", "base_type")
+    __slots__ = (
+        "_idx",
+        "node_id", 
+        "browse_name", 
+        "node_class", 
+        "references", 
+        "attributes", 
+        "subnodes", 
+        "namespace", 
+        "base_type",
+    ) 
 
     _idx: int
     namespace: Namespace
@@ -292,6 +308,9 @@ class Node:
                 
     def add_reference(self, reference_type: str, target_nodeid: str, is_forward:bool=True):
         ref = Reference(reference_type, target_nodeid, is_forward, self)
+        if self.namespace:
+            target_idx = self.namespace.nid_to_idx.get(target_nodeid)
+            ref.target_idx = target_idx
         if ref not in self.references:
             self.references.append(ref)
         
@@ -347,7 +366,7 @@ class NamespaceContext:
 class Namespace:
     #TODO Add ".from_nodeset" function to load nodemodels from files
     
-    __next_node_idx: int
+    _next_node_idx: int
     _default_namespace_context: NamespaceContext = None
     _uri: str
 
@@ -357,6 +376,9 @@ class Namespace:
     is_type_namespace: bool
     is_ua_namespace: bool
 
+    nodes_by_idx:list[Node]
+    nid_to_idx: dict[str, int]
+    nodes_by_browse_name: dict[QualifiedName, Node]
     name: str
     nodes_by_id: dict[str, Node]
 
@@ -365,10 +387,17 @@ class Namespace:
     def __init__(self, namespace_context:NamespaceContext = None):
         self.name = None
         self._uri = None
-        self.__next_node_idx = 0
+        self._next_node_idx = 0
         self.is_type_namespace = False
+        
+        # Canonical mappings
         self.nodes_by_id = {}
         self.nodes_by_browse_name = {}
+        self.nid_to_idx = {}
+
+        # Dense array lookup
+        self.nodes_by_idx = []
+
         self.namespace_array = []
         self.ns_info = {}
         
@@ -395,8 +424,8 @@ class Namespace:
                 f"(URI={self._uri}, namespaces={ns_info}, nodes={len(self.nodes_by_id)})")
 
     def __assign_node_idx(self, node:Node) -> Node:
-        node._idx = self.__next_node_idx
-        self.__next_node_idx += 1
+        node._idx = self._next_node_idx
+        self._next_node_idx += 1
         return node
 
     @property
@@ -412,22 +441,7 @@ class Namespace:
         if not self.name:
             #TODO Remove the whole 'name' concept. It's currently being used in the program logic,
             # and that needs to stop.
-            
             self.name = derive_namespace_name(uri)
-            # split_uri = uri.strip("/").split("/")
-            # is_url = False
-            # for substr in split_uri:
-            #     if ".com" in substr or ".org" in substr:
-            #         is_url = True
-            #         break
-            # if is_url:
-            #     com_idx = 0
-            #     for idx, substr in enumerate(split_uri):
-            #         if ".com" in substr or ".org" in substr:
-            #             com_idx = idx
-            #     self.name = "_".join(split_uri[com_idx+1:])
-            # else:
-            #     self.name = uri.strip("/").split("/")[-1]
             
         self._uri = uri
         self.is_ua_namespace = self.name == "UA"
@@ -459,13 +473,27 @@ class Namespace:
     
     def add_node(self, node: Node):   
         node = self.__assign_node_idx(node)
-        self.nodes_by_id[node.node_id.to_string()] = node
+        nid_str = node.node_id.to_string()
+
+        # Store canonical mappings
+        self.nodes_by_id[nid_str] = node
+        self.nid_to_idx[nid_str] = node._idx
+
+        # Dense array
+        self.nodes_by_idx.append(node)
+
+        # Browse name index
         self.nodes_by_browse_name.setdefault(node.browse_name, []).append(node)
         
         if not self.is_type_namespace:
             if node.node_class in node_definitions.TYPE_CLASSES:
                 self.is_type_namespace = True
 
+    def find_by_idx(self, idx:int) -> Node|None:
+        if 0 <= idx < len(self.nodes_by_idx):
+            return self.nodes_by_idx[idx]
+        return None
+    
     def add_alias(self, alias_name: str, nodeid_text: str):
         # nodeid_text can be "i=63", "ns=0;i=63", "ns=1;s=Thing", etc.
         if ";" in nodeid_text:  # expanded form
@@ -478,6 +506,11 @@ class Namespace:
     def _get_model_for_ns_index(self, ns_idx: int):
         ns_uri = self.get_namespace_by_index(ns_idx)
         return self.namespace_context.get_model_by_uri(ns_uri)
+
+    def find_by_nodeid_v2(self, node_id: str | NodeId) -> Node|ReferenceNode:
+        nid_str = node_id.to_string() if isinstance(node_id, NodeId) else node_id
+        idx = self.nid_to_idx.get(nid_str)
+        return None if idx is None else self.find_by_idx(idx)
 
     def find_by_nodeid(self, node_id: str | NodeId) -> Node|ReferenceNode:
         # Normalize
