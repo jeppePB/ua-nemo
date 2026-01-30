@@ -19,7 +19,8 @@ class FakeNamespace:
         self._nodes = {}          # nodeid -> Node
         self._resolve_map = {}    # ref_type -> nodeid (string or NodeId)
         self.nid_to_idx = {}      # make sure nothing breaks when attempting to get idx of a node
-
+        self.is_ua_namespace = False
+        
     def register(self, nodeid, node):
         """Helper for tests: make find_by_nodeid return this node."""
         self._nodes[nodeid] = node
