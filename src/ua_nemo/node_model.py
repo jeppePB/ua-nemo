@@ -161,7 +161,7 @@ class Reference:
 
 class Node:
     __slots__ = (
-        "_idx",
+        "minted_idx",
         "node_id", 
         "browse_name", 
         "node_class", 
@@ -172,7 +172,7 @@ class Node:
         "base_type",
     ) 
 
-    _idx: int
+    minted_idx: int
     namespace: Namespace
     node_id: NodeId
     browse_name: QualifiedName
@@ -203,7 +203,7 @@ class Node:
             subnodes:dict=None,
             ):
         
-        self._idx = None
+        self.minted_idx = None
         if not isinstance(node_id, NodeId):
             node_id = NodeId.from_string(node_id)
         
@@ -214,7 +214,11 @@ class Node:
         if isinstance(browse_name, QualifiedName):
             self.browse_name = browse_name
         else:
-            self.browse_name = QualifiedName.from_string(browse_name, default_ns=1)
+            if namespace.is_ua_namespace:
+                self.browse_name = QualifiedName.from_string(browse_name)
+            else:
+                self.browse_name = QualifiedName.from_string(browse_name, default_ns=1)
+
         self.node_class = node_class
         self.references = []
         self.namespace = namespace
@@ -379,6 +383,10 @@ class Namespace:
     nodes_by_idx:list[Node]
     nid_to_idx: dict[str, int]
     nodes_by_browse_name: dict[QualifiedName, Node]
+    child_index: dict[
+        int, dict[
+            QualifiedName, list[int]]]
+    
     name: str
     nodes_by_id: dict[str, Node]
 
@@ -424,7 +432,7 @@ class Namespace:
                 f"(URI={self._uri}, namespaces={ns_info}, nodes={len(self.nodes_by_id)})")
 
     def __assign_node_idx(self, node:Node) -> Node:
-        node._idx = self._next_node_idx
+        node.minted_idx = self._next_node_idx
         self._next_node_idx += 1
         return node
 
@@ -468,6 +476,13 @@ class Namespace:
             return
         self.namespace_array.append(ns_uri)
 
+    def index_child_edge(self, parent:Node, child:Node):
+        p = parent.minted_idx
+        q = child.browse_name
+        c = child.minted_idx
+        self.child_index.setdefault(p, {}).setdefault(
+                q, []).append(c)
+
     def get_namespace_by_index(self, ns_idx: int) -> str:
         return self.namespace_array[ns_idx]
     
@@ -477,7 +492,7 @@ class Namespace:
 
         # Store canonical mappings
         self.nodes_by_id[nid_str] = node
-        self.nid_to_idx[nid_str] = node._idx
+        self.nid_to_idx[nid_str] = node.minted_idx
 
         # Dense array
         self.nodes_by_idx.append(node)
