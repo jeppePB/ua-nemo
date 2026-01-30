@@ -184,3 +184,61 @@ def test_find_by_browse_name_does_not_normalize_for_ua():
 
     # For UA model, don't force "1:" prefix
     assert ua.find_by_browse_name("0:Root") == [node]
+
+def test_node_is_assigned_minted_idx():
+    ns = Namespace()
+    ns.uri = "urn:model1"
+
+    node = Node("ns=1;i=1", "1:Foo", NodeClass.Object, ns)
+    assert node._idx is None
+    ns.add_node(node)
+    assert node._idx == 0
+    assert ns._next_node_idx == 1
+    
+    node_two = Node("ns=1;i=100", "1:Foo", NodeClass.Object, ns)
+    assert node_two._idx is None
+    ns.add_node(node_two)
+    assert node_two._idx == 1
+    assert ns._next_node_idx == 2
+
+def test_node_is_assigned_minted_idx_per_ns():
+    ns = Namespace()
+    ns.uri = "urn:model1"
+    ns_2 = Namespace()
+    ns_2.uri = "urn:model2"
+
+    node = Node("ns=1;i=1", "1:Foo", NodeClass.Object, ns)
+    node_2 = Node("ns=1;i=1", "1:Foo", NodeClass.Object, ns_2)
+    node_3 = Node("ns=1;i=1", "1:Foo", NodeClass.Object, ns_2)
+    
+    ns.add_node(node)
+    ns_2.add_node(node_2)
+    ns_2.add_node(node_3)
+
+    # Index should only count up on a per-namespace basis
+    assert ns._next_node_idx == 1
+    assert ns_2._next_node_idx == 2
+    # Node should be assigned correct index
+    assert node_3._idx == 1
+
+def test_find_node_by_idx():
+    ns = Namespace()
+    ns.uri = "urn:model1"
+
+    node = Node("ns=1;i=1", "1:Foo", NodeClass.Object, ns)
+    ns.add_node(node)
+
+    assert ns.find_by_idx(0) == node
+
+def test_find_node_by_nodeid_v2():
+    #TODO Replace og find_by_nodeid with the v2 version
+    ns = Namespace()
+    ns.uri = "urn:model1"
+
+    node = Node("ns=1;i=1", "1:Foo", NodeClass.Object, ns)
+    ns.add_node(node)
+
+    assert ns.find_by_nodeid_v2("ns=1;i=1") == node
+
+    nid = NodeId.from_string("ns=1;i=1")
+    assert ns.find_by_nodeid_v2(nid) == node
