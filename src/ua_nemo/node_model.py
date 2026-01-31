@@ -473,13 +473,13 @@ class Namespace:
         #TODO Remove separate handling of namespaces in model and global ns context
         self.namespace_context.register_model(self)
     
-    def resolve(self, nodeid_or_alias: str) -> NodeId:
+    def resolve(self, nodeid_or_alias: str | NodeId) -> NodeId:
         # Fast path: a real NodeId string?
         if isinstance(nodeid_or_alias, NodeId):
             return nodeid_or_alias
         
         # Alias?
-        if self.aliases.get(nodeid_or_alias):
+        if nodeid_or_alias in self.aliases:
             return self.aliases[nodeid_or_alias]
         
         try:
