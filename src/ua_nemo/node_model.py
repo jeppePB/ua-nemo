@@ -413,6 +413,7 @@ class Namespace:
         self._nsidx_model_cache = {}
 
         self.is_type_namespace = False
+        self.is_ua_namespace = False
         
         # Canonical mappings
         self.nodes_by_id = {}
