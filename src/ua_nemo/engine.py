@@ -2,7 +2,7 @@ from pathlib import Path
 
 from .node_model import NodeId, Namespace
 from .type_instantiator import TypeInstantiator
-from .xml_loader import TypeLibraryXMLLoader
+from .parsers import NodesetLoader
 from .types import QualifiedName
 
 class ModelBuilderEngine:
@@ -25,7 +25,7 @@ class ModelBuilderEngine:
             dir_path (Path, optional): Path to directory containing typelibrary files. Defaults to None.
             file_list (list[Path | str], optional): List of files to load. Defaults to None.
         """
-        loader = TypeLibraryXMLLoader()
+        loader = NodesetLoader()
         if dir_path:
             self.typelibraries = loader.load_from_path(dir_path)
         elif file_list:

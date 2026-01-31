@@ -25,7 +25,7 @@ def test_load_typelibraries():
     engine = ModelBuilderEngine()
     dummy_loader = MagicMock()
     dummy_loader.load_from_path.return_value = {'UA': 'SomeModel'}
-    with patch('ua_nemo.engine.TypeLibraryXMLLoader', return_value=dummy_loader):
+    with patch('ua_nemo.engine.NodesetLoader', return_value=dummy_loader):
         engine.load_typelibraries(Path('dummy.xml'))
     assert 'UA' in engine.typelibraries
     assert engine.typelibraries['UA'] == 'SomeModel'
