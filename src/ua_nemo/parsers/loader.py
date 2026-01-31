@@ -4,8 +4,7 @@ import xml.etree.ElementTree as ET
 
 from ua_nemo.node_model import Node, Namespace, NodeId
 
-from ua_nemo.node_definitions import NodeClass, resolve_node_class
-from ua_nemo.utils import split_node_fields
+from ua_nemo.node_definitions import NodeClass
 from .dtos import ParsedReference, ParsedNode
 
 UA_NODESET = Path(__file__).resolve().parent.parent / "typelibraries" / "ua_nodeset"
