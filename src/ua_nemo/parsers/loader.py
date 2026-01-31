@@ -1,11 +1,15 @@
 from pathlib import Path
 from typing import Callable, Iterator
+import logging
+
 import xml.etree.ElementTree as ET
 
 from ua_nemo.node_model import Node, Namespace, NodeId
 
 from ua_nemo.node_definitions import NodeClass
 from .dtos import ParsedReference, ParsedNode
+
+logger = logging.getLogger(__name__)
 
 UA_NODESET = Path(__file__).resolve().parent.parent / "typelibraries" / "ua_nodeset"
 
@@ -139,7 +143,7 @@ class NodesetLoader:
                 del(model)
                 return False, xml_path
             elif missing_requirements_strategy == "ignore":
-                print("One or more required models are missing. Some functionality might be broken.")
+                logger.warning("One or more required models are missing. Some functionality might be broken.")
                 pass
         
         parse_aliases(root, model, ns)
@@ -222,7 +226,7 @@ class NodesetLoader:
         xml_files = list(typelib_path.glob("*.xml"))
         return self.load_from_file_list(xml_files)
         
-    def load_from_file_list(self, file_list:list[str|Path], deferred=0) -> dict[str, Namespace]:
+    def load_from_file_list(self, file_list:list[str|Path], handle_max_deferred_strategy:str="ignore", deferred=0) -> dict[str, Namespace]:
         """Legacy support
 
         Args:
@@ -233,6 +237,7 @@ class NodesetLoader:
         """
         # Max attempts to load namespaces if required models are missing
         max_attempts = 3
+        max_deferred = deferred >= max_attempts
 
         file_list = [Path(f) for f in file_list]
         
@@ -256,7 +261,10 @@ class NodesetLoader:
         
         for file in load_order:
             if file.is_file():
-                load_status, result = self.load(file)
+                if max_deferred:
+                    load_status, result = self.load(file, handle_max_deferred_strategy)
+                else:
+                    load_status, result = self.load(file)
                 if load_status:
                     namespace_dict.update(result)
                 else:
@@ -264,9 +272,11 @@ class NodesetLoader:
                     deferred_load.append(result)
         
         if len(deferred_load) > 0:
-            if deferred >= max_attempts:
-                raise Exception(f"Failed to load all typelibraries. Missing requirements for files:\n{deferred_load}")
-            namespace_dict.update(self.load_from_file_list(deferred_load, deferred+1))
+            if max_deferred:
+                if handle_max_deferred_strategy == "raise":
+                    raise Exception(f"Failed to load all typelibraries. Missing requirements for files:\n{deferred_load}")
+            else:
+                namespace_dict.update(self.load_from_file_list(deferred_load, deferred+1))
         
         return namespace_dict
     
