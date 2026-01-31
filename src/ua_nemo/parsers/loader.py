@@ -174,7 +174,7 @@ class NodesetLoader:
             # Apply refs with alias resolution
             for r in parsed.references:
                 node.add_reference(
-                    reference_type=r.reference_type,
+                    reference_type=model.resolve(r.reference_type),
                     target_nodeid=model.resolve(r.target_nodeid_text),
                     is_forward=r.is_forward
                 )

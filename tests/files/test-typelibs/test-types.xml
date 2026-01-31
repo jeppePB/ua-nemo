@@ -11,6 +11,7 @@
     <Alias Alias="BaseObjectType">i=58</Alias>
     <Alias Alias="BaseDataVariableType">i=63</Alias>
     <Alias Alias="PropertyType">i=68</Alias>
+    <Alias Alias="HasTypeDefinition">i=40</Alias>
     <Alias Alias="HasProperty">i=46</Alias>
   </Aliases>
 
