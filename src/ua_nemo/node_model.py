@@ -484,7 +484,7 @@ class Namespace:
         
         try:
             return NodeId.from_string(nodeid_or_alias)
-        except KeyError:
+        except Exception:
             raise ValueError(f"Unknown alias or bad NodeId: {nodeid_or_alias}")
         
     def add_namespace(self, ns_uri: str):
