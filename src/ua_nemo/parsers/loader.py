@@ -5,9 +5,10 @@ import logging
 import xml.etree.ElementTree as ET
 
 from ua_nemo.node_model import Node, Namespace, NodeId
-
+from ua_nemo.types import NamespaceMetadata
 from ua_nemo.node_definitions import NodeClass
 from .dtos import ParsedReference, ParsedNode
+from ua_nemo.core.exceptions import MissingRequiredModelException
 
 logger = logging.getLogger(__name__)
 
@@ -77,22 +78,31 @@ def iter_parsed_nodes(xml_path: Path, ns:set) -> Iterator[ParsedNode]:
 
         elem.clear()
 
-def parse_namespace_models(root, model: "Namespace", ns:set) -> bool:
+def parse_namespace_models(root, model: "Namespace", ns:set):
     models_elem = root.find("ua:Models", ns)
-    if models_elem is not None:
-        model_elems = models_elem.findall("ua:Model", ns)
-        if model_elems:
-            model_elem = model_elems[0]
-            model.uri = model_elem.attrib.get("ModelUri", model.uri)
-            model.ns_info.update(model_elem.attrib)
-            model.ns_info["required_models"] = []
-            for req in model_elem.findall("ua:RequiredModel", ns):
-                model.ns_info["required_models"].append(req.attrib)
-                req_uri = req.attrib.get("ModelUri")
-                if req_uri and req_uri not in model.namespace_context.namespace_dict_uri:
-                    return False
-    return True
+    if models_elem is None:
+        return
+    
+    model_elems = models_elem.findall("ua:Model", ns)
+    if not model_elems:
+        return
+    
+    # Set namespae metadata
+    model_elem = model_elems[0]
+    model_uri = model_elem.attrib.get("ModelUri")
+    if model_uri:
+        model.uri = model_uri #TODO Refactor to point to same as namespacemetadata
+    
+    model.metadata = NamespaceMetadata.from_xml_attrib(
+        model_elem.attrib,
+        is_mandatory=False
+    )
 
+    # Load required models
+    for req in model_elem.findall("ua:RequiredModel", ns):
+        meta = NamespaceMetadata.from_xml_attrib(req.attrib, is_mandatory=True)
+        model.dependencies.append(meta)
+        
 def parse_aliases(root, model: "Namespace", ns:str):
     aliases_elem = root.find("ua:Aliases", ns)
     if aliases_elem is not None:
@@ -130,27 +140,19 @@ class NodesetLoader:
         self._split_node_fields = split_node_fields
         self._progress = progress
 
-    def load(self, xml_path: Path, missing_requirements_strategy:str="defer") -> tuple[bool, dict | Path]:
+    def load(self, xml_path: Path, missing_requirements_strategy: str = "defer") -> dict[str, Namespace]:
         model = self._namespace_factory()
         ns = {"ua": "http://opcfoundation.org/UA/2011/03/UANodeSet.xsd"}
 
-        context = ET.iterparse(xml_path, events=("start", "end"))
-        event, root = next(context)
+        root = ET.parse(xml_path).getroot()
 
-        ok = parse_namespace_models(root, model, ns)
-        if not ok:
-            if missing_requirements_strategy == "defer":
-                del(model)
-                return False, xml_path
-            elif missing_requirements_strategy == "ignore":
-                logger.warning("One or more required models are missing. Some functionality might be broken.")
-                pass
-        
+        parse_namespace_models(root, model, ns)
+        self._check_missing_requirements(model, xml_path, missing_requirements_strategy)
+
         parse_aliases(root, model, ns)
         parse_uri(root, model, ns)
 
         refs_to_classify = []
-
         counter = 0
         
         for parsed in iter_parsed_nodes(xml_path, ns):
@@ -191,6 +193,28 @@ class NodesetLoader:
     
         return (True, {model.name: model})
     
+    def _check_missing_requirements(self, model: Namespace, xml_path: Path, strategy: str):
+        missing = [
+            dep for dep in model.dependencies
+            if dep.is_mandatory and dep.uri not in model.namespace_context.namespace_dict_uri
+        ]
+
+        if missing:
+            if strategy == "defer":
+                raise MissingRequiredModelException(
+                    requesting=model.metadata,  
+                    missing=missing,
+                    nodeset_path=xml_path
+                )
+            elif strategy == "ignore":
+                logger.warning(
+                    "Missing required model(s) for %s while loading %s: %s",
+                    model.uri, xml_path, ", ".join(m.uri for m in missing)
+                )
+            else:
+                raise ValueError(f"Unsupported strategy: {strategy}")
+
+    
     def _classify_references(self, refs_to_classify: list["Node"]):
         for node in refs_to_classify:
             node.base_type = self._resolve_ua_basetype(node)
@@ -205,8 +229,7 @@ class NodesetLoader:
             return node.node_id
 
         for ref in node.references:
-            ref_type = namespace.resolve(ref.reference_type)
-            if ref_type.to_string() == HAS_SUBTYPE and not ref.is_forward:
+            if ref.reference_type.to_string() == HAS_SUBTYPE and not ref.is_forward:
                 if ref.target_nodeid.to_string() in HIERARCHICAL_UA_REFS:
                     return node.node_id
                 parent_node = namespace.find_by_nodeid(ref.target_nodeid)
@@ -247,37 +270,30 @@ class NodesetLoader:
             if not any("Opc.Ua.NodeSet2" in file.name for file in file_list):
                 load_order.append(Path(UA_NODESET / "Opc.Ua.NodeSet2.xml"))
             else:
-                for file in file_list:
-                    if "Opc.Ua.NodeSet2" in file.name:
-                        load_order.append(file)
-                        break
+                load_order.append(next(f for f in file_list if "Opc.Ua.NodeSet2" in f.name))
         
         load_order += sorted(file_list, key=lambda p: p.name)
 
-        namespace_dict = {}
-        
-        deferred_load = []
+        namespace_dict: dict[str, Namespace]= {}
+        deferred_load: list[Path] = []
 
-        
         for file in load_order:
-            if file.is_file():
-                if max_deferred:
-                    load_status, result = self.load(file, handle_max_deferred_strategy)
-                else:
-                    load_status, result = self.load(file)
-                if load_status:
-                    namespace_dict.update(result)
-                else:
-                    print(f"Performing deferred load of {result} later..")
-                    deferred_load.append(result)
+            if not file.is_file():
+                continue
+            try:
+                strategy = handle_max_deferred_strategy if max_deferred else "defer"
+                namespace_dict.update(self.load(file, missing_requirements_strategy=strategy))
+            except MissingRequiredModelException as e:
+                logger.info("Deferring load of %s: %s", file, e)
+                deferred_load.append(file)
         
-        if len(deferred_load) > 0:
+        if deferred_load:
             if max_deferred:
                 if handle_max_deferred_strategy == "raise":
                     raise Exception(f"Failed to load all typelibraries. Missing requirements for files:\n{deferred_load}")
             else:
-                namespace_dict.update(self.load_from_file_list(deferred_load, deferred+1))
-        
+                namespace_dict.update(self.load_from_file_list(deferred_load, handle_max_deferred_strategy, deferred + 1))
+
         return namespace_dict
     
         
