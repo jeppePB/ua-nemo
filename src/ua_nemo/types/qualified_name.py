@@ -1,5 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass
+from typing import Any, Mapping
 
 @dataclass(frozen=True, slots=True)
 class QualifiedName:
@@ -30,3 +31,33 @@ class QualifiedName:
             if left.isdigit():
                 return cls(int(left), right)
         return cls(default_ns, s)
+
+@dataclass(frozen=True, slots=True)
+class NamespaceMetadata:
+    uri: str
+    is_mandatory: bool
+    version: str | None
+    publication_date: str | None
+    extras: Mapping[str, str] = ()
+
+    @staticmethod
+    def from_xml_attrib(attrib: Mapping[str, Any], *, is_mandatory: bool) -> "NamespaceMetadata":
+        uri = str(attrib.get("ModelUri") or "")
+        if not uri:
+            raise ValueError(f"Missing ModelUri in attrib: {attrib}")
+
+        version = attrib.get("Version")
+        publication_date = attrib.get("PublicationDate")
+
+        # Keep everything else raw.
+        known = {"ModelUri", "Version", "PublicationDate"}
+        extras = {k: str(v) for k, v in attrib.items() if k not in known}
+
+        return NamespaceMetadata(
+            uri=uri,
+            is_mandatory=is_mandatory,
+            version=str(version) if version is not None else None,
+            publication_date=str(publication_date) if publication_date is not None else None,
+            extras=extras,
+        )
+

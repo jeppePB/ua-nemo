@@ -4,7 +4,7 @@ from urllib.parse import urlparse
 
 from . import node_definitions
 from .node_definitions import NodeClass
-from .types import QualifiedName
+from .types import QualifiedName, NamespaceMetadata
 
 class AmbiguousChildError(LookupError):
     pass
@@ -404,7 +404,8 @@ class Namespace:
     name: str
     nodes_by_id: dict[str, Node]
 
-    ns_info: dict
+    metadata: NamespaceMetadata
+    dependencies: list[NamespaceMetadata]
 
     def __init__(self, namespace_context:NamespaceContext = None):
         self.name = None
@@ -424,8 +425,9 @@ class Namespace:
         self.nodes_by_idx = []
 
         self.namespace_array = []
-        self.ns_info = {}
-        
+        self.metadata = None
+        self.dependencies = []
+
         if namespace_context is None:
             if Namespace._default_namespace_context is None:
                 Namespace._default_namespace_context = NamespaceContext()
