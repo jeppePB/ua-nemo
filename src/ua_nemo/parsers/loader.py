@@ -191,7 +191,7 @@ class NodesetLoader:
         
         self._classify_references(refs_to_classify)
     
-        return (True, {model.name: model})
+        return {model.name: model}
     
     def _check_missing_requirements(self, model: Namespace, xml_path: Path, strategy: str):
         missing = [
