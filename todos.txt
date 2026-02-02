@@ -10,3 +10,4 @@
 
 - Fix deferred load in typelib loader. It should max out and get
     an option to ignore namespaces that can not be found in loaded files.
+- Namespace array is accessed in multiple places.
