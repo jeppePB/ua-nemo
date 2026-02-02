@@ -349,9 +349,9 @@ class NamespaceContext:
                 #TODO Make a proper warning
                 print(f"UA namespace has not been loaded. Model {model.name} has an empty namespace on index 0 of its namespace array.")
             else:
-                model.namespace_array.append(ua_namespace.uri)
+                model.add_namespace(ua_namespace.uri)
             
-        model.namespace_array.append(model.uri)
+        model.add_namespace(model.uri)
     
     def get_model(self, name:str=None, uri:str=None) -> Namespace | None:
         #TODO Refactor this
