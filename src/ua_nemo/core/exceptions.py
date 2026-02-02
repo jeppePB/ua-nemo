@@ -2,8 +2,8 @@ from pathlib import Path
 
 from ua_nemo.types import NamespaceMetadata
 
-class MissingRequiredModelException(Exception):
-    requesting: str
+class MissingRequiredModelError(Exception):
+    requesting:     NamespaceMetadata
     missing:        list[NamespaceMetadata]
     nodeset_path:   Path
 
