@@ -1,6 +1,7 @@
 from pathlib import Path
-from typing import Callable, Iterator
+from typing import Callable
 import logging
+from dataclasses import dataclass
 
 import xml.etree.ElementTree as ET
 
@@ -8,7 +9,7 @@ from ua_nemo.node_model import Node, Namespace, NodeId
 from ua_nemo.types import NamespaceMetadata
 from ua_nemo.node_definitions import NodeClass
 from .dtos import ParsedReference, ParsedNode
-from ua_nemo.core.exceptions import MissingRequiredModelException
+from ua_nemo.core.exceptions import MissingRequiredModelError
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +24,12 @@ SUPPORTED_NODE_TAGS = {
     "UAObjectType", "UAVariableType", "UAReferenceType",
     "UADataType", "UAObject", "UAVariable",
 }
+
+@dataclass
+class NodesetParseState:
+    in_namespace_uris: bool = False
+    header_checked: bool = False
+    node_count: int = 0
 
 def clean_tag(tag:str) -> str:
     return tag.split("}", 1)[-1] if "}" in tag else tag
@@ -45,74 +52,101 @@ def extract_references(elem, ns) -> tuple[ParsedReference, ...]:
             is_forward = ref_elem.attrib.get("IsForward", "true").lower() != "false"
             out.append(ParsedReference(ref_type, target_text, is_forward))
     return tuple(out)
+        
+def parse_models_event(event: str, elem, model: "Namespace") -> None:
+    if event != "end":
+        return
 
-def iter_parsed_nodes(xml_path: Path, ns:set) -> Iterator[ParsedNode]:
-    context = ET.iterparse(xml_path, events=("start", "end"))
-    event, root = next(context)
+    tag = clean_tag(elem.tag)
 
-    for event, elem in context:
-        if event != "end":
-            continue
+    if tag == "Model":
+        # Only process if this Model is the one in <Models> section.
+        # In NodeSet2, <Model> appears under <Models>. (No other common uses.)
+        model_uri = elem.attrib.get("ModelUri")
+        if model_uri:
+            model.uri = model_uri
+        model.metadata = NamespaceMetadata.from_xml_attrib(elem.attrib, is_mandatory=False)
 
-        tag = clean_tag(elem.tag)
-        if tag not in SUPPORTED_NODE_TAGS:
-            continue
-
-        node_id_text = elem.attrib.get("NodeId")
-        browse_name = elem.attrib.get("BrowseName")
-
-        raw = extract_raw_fields(elem)
-        # ensure NodeId/BrowseName aren't duplicated inside raw
-        raw.pop("NodeId", None)
-        raw.pop("BrowseName", None)
-
-        refs = extract_references(elem, ns)
-
-        yield ParsedNode(
-            tag=tag,
-            node_id_text=node_id_text,
-            browse_name=browse_name,
-            raw=raw,
-            references=refs,
+    elif tag == "RequiredModel":
+        model.dependencies.append(
+            NamespaceMetadata.from_xml_attrib(elem.attrib, is_mandatory=True)
         )
 
-        elem.clear()
+def parse_alias_event(event: str, elem, model: "Namespace") -> None:
+    if event != "end":
+        return
+    if clean_tag(elem.tag) != "Alias":
+        return
+    model.add_alias(elem.attrib.get("Alias"), elem.text)
 
-def parse_namespace_models(root, model: "Namespace", ns:set):
-    models_elem = root.find("ua:Models", ns)
-    if models_elem is None:
+def parse_namespace_uri_event(event: str, elem, model: "Namespace", state: NodesetParseState) -> None:
+    tag = clean_tag(elem.tag)
+
+    # This control block is there just in case there is ever
+    # an uri that is outside namespaceuris.
+    if event == "start" and tag == "NamespaceUris":
+        state.in_namespace_uris = True
         return
-    
-    model_elems = models_elem.findall("ua:Model", ns)
-    if not model_elems:
+
+    if event == "end" and tag == "NamespaceUris":
+        state.in_namespace_uris = False
+        elem.clear()
         return
-    
-    # Set namespae metadata
-    model_elem = model_elems[0]
-    model_uri = model_elem.attrib.get("ModelUri")
-    if model_uri:
-        model.uri = model_uri #TODO Refactor to point to same as namespacemetadata
-    
-    model.metadata = NamespaceMetadata.from_xml_attrib(
-        model_elem.attrib,
-        is_mandatory=False
+
+    if event == "end" and tag == "Uri" and state.in_namespace_uris:
+        if elem.text:
+            model.add_namespace(elem.text)
+
+def try_parse_node_event(
+    event: str,
+    elem,
+    model: "Namespace",
+    ns,
+    *,
+    resolve_node_class,
+    split_node_fields,
+    node_factory,
+) -> "Node | None":
+    if event != "end":
+        return None
+
+    tag = clean_tag(elem.tag)
+    if tag not in SUPPORTED_NODE_TAGS:
+        return None
+
+    node_id_text = elem.attrib.get("NodeId")
+    browse_name = elem.attrib.get("BrowseName")
+
+    raw = extract_raw_fields(elem)
+    raw.pop("NodeId", None)
+    raw.pop("BrowseName", None)
+
+    refs = extract_references(elem, ns)
+
+    node_class = resolve_node_class(tag)
+    attributes, subnodes = split_node_fields(node_class, dict(raw))
+
+    node = node_factory(
+        node_id_text,
+        browse_name,
+        node_class,
+        model,
+        attributes,
+        subnodes
     )
 
-    # Load required models
-    for req in model_elem.findall("ua:RequiredModel", ns):
-        meta = NamespaceMetadata.from_xml_attrib(req.attrib, is_mandatory=True)
-        model.dependencies.append(meta)
-        
-def parse_aliases(root, model: "Namespace", ns:str):
-    aliases_elem = root.find("ua:Aliases", ns)
-    if aliases_elem is not None:
-        for alias_elem in aliases_elem.findall("ua:Alias", ns):
-            model.add_alias(alias_elem.attrib.get("Alias"), alias_elem.text)
+    # Apply refs with alias resolution (Namespace.resolve returns NodeId)
+    for r in refs:
+        node.add_reference(
+            reference_type=model.resolve(r.reference_type),
+            target_nodeid=model.resolve(r.target_nodeid_text),
+            is_forward=r.is_forward,
+        )
 
-def parse_uri(root, model: "Namespace", ns:str):
-    for uri_elem in root.findall(".//ua:Uri", ns):
-        if uri_elem.text:
-            model.add_namespace(uri_elem.text.strip())
+    elem.clear()
+    return node
+
+
 
 class NodesetLoader:
     def __init__(
@@ -144,55 +178,52 @@ class NodesetLoader:
         model = self._namespace_factory()
         ns = {"ua": "http://opcfoundation.org/UA/2011/03/UANodeSet.xsd"}
 
-        root = ET.parse(xml_path).getroot()
-
-        parse_namespace_models(root, model, ns)
-        self._check_missing_requirements(model, xml_path, missing_requirements_strategy)
-
-        parse_aliases(root, model, ns)
-        parse_uri(root, model, ns)
-
+        state = NodesetParseState()
         refs_to_classify = []
-        counter = 0
-        
-        for parsed in iter_parsed_nodes(xml_path, ns):
-            counter += 1
-            if self._progress and counter % 10000 == 0:
-                self._progress(counter)
-            
-            if not model.uri:
-                if parsed.tag == "Model" and "ModelUri" in parsed.raw:
-                    model.uri = parsed.raw["ModelUri"]
-                
-            node_class = self._resolve_node_class(parsed.tag)
-            attributes, subnodes = self._split_node_fields(node_class, dict(parsed.raw))
 
-            node = self._node_factory(
-                parsed.node_id_text,
-                parsed.browse_name,
-                node_class,
+        context = ET.iterparse(xml_path, events=("start", "end"))
+        _, root = next(context)
+        
+        for event, elem in context:
+            if not state.header_checked:
+                parse_models_event(event, elem, model)
+                parse_alias_event(event, elem, model)
+                parse_namespace_uri_event(event, elem, model, state)
+
+            node = try_parse_node_event(
+                event,
+                elem,
                 model,
-                attributes,
-                subnodes
+                ns,
+                resolve_node_class=self._resolve_node_class,
+                split_node_fields=self._split_node_fields,
+                node_factory=self._node_factory
             )
 
-            # Apply refs with alias resolution
-            for r in parsed.references:
-                node.add_reference(
-                    reference_type=model.resolve(r.reference_type),
-                    target_nodeid=model.resolve(r.target_nodeid_text),
-                    is_forward=r.is_forward
-                )
+            if node is None:
+                continue
+
+            # First time a supported node is hit, header has been fully parsed. Check deps and fail fast.
+            if not state.header_checked:
+                self._check_missing_requirements(model, xml_path, missing_requirements_strategy)
+                state.header_checked = True
+            
+            state.node_count += 1
+            if self._progress and state.node_count % 10000 == 0:
+                self._progress(state.node_count)
+
             model.add_node(node)
 
-            # Classify reference type nodes (hierarchical/non-hierarchical) later
-            if node_class == NodeClass.ReferenceType:
+            if node.node_class == NodeClass.ReferenceType:
                 refs_to_classify.append(node)
+            
+
+        if not state.header_checked:
+            self._check_missing_requirements(model, xml_path, missing_requirements_strategy)
         
         self._classify_references(refs_to_classify)
-    
         return {model.name: model}
-    
+        
     def _check_missing_requirements(self, model: Namespace, xml_path: Path, strategy: str):
         missing = [
             dep for dep in model.dependencies
@@ -200,8 +231,8 @@ class NodesetLoader:
         ]
 
         if missing:
-            if strategy == "defer":
-                raise MissingRequiredModelException(
+            if strategy == "defer" or strategy == "raise":
+                raise MissingRequiredModelError(
                     requesting=model.metadata,  
                     missing=missing,
                     nodeset_path=xml_path
@@ -233,11 +264,13 @@ class NodesetLoader:
                 if ref.target_nodeid.to_string() in HIERARCHICAL_UA_REFS:
                     return node.node_id
                 parent_node = namespace.find_by_nodeid(ref.target_nodeid)
+                if parent_node is None:
+                    continue  # Parent node namespace has not been loaded
                 return self._resolve_ua_basetype(parent_node)
 
         return None
 
-    def load_from_path(self, typelib_path: Path) -> dict[str, Namespace]:
+    def load_from_path(self, typelib_path: Path, handle_max_deferred_strategy:str="ignore") -> dict[str, Namespace]:
         """Loads typelibraries from a directory path
 
         Args:
@@ -247,7 +280,7 @@ class NodesetLoader:
             dict: Mapping of model_name:model
         """
         xml_files = list(typelib_path.glob("*.xml"))
-        return self.load_from_file_list(xml_files)
+        return self.load_from_file_list(xml_files, handle_max_deferred_strategy)
         
     def load_from_file_list(self, file_list:list[str|Path], handle_max_deferred_strategy:str="ignore", deferred=0) -> dict[str, Namespace]:
         """Legacy support
@@ -260,7 +293,7 @@ class NodesetLoader:
         """
         # Max attempts to load namespaces if required models are missing
         max_attempts = 3
-        max_deferred = deferred >= max_attempts
+        max_attempts_reached = deferred >= max_attempts
 
         file_list = [Path(f) for f in file_list]
         
@@ -281,18 +314,18 @@ class NodesetLoader:
             if not file.is_file():
                 continue
             try:
-                strategy = handle_max_deferred_strategy if max_deferred else "defer"
+                strategy = handle_max_deferred_strategy if max_attempts_reached else "defer"
                 namespace_dict.update(self.load(file, missing_requirements_strategy=strategy))
-            except MissingRequiredModelException as e:
-                logger.info("Deferring load of %s: %s", file, e)
-                deferred_load.append(file)
-        
+            except MissingRequiredModelError as e:
+                if max_attempts_reached and handle_max_deferred_strategy == "raise":
+                    logger.error("Failed to load required models for nodeset")
+                    raise e
+                else:
+                    logger.info("Deferring load of %s: %s", file, e)
+                    deferred_load.append(file)
+            
         if deferred_load:
-            if max_deferred:
-                if handle_max_deferred_strategy == "raise":
-                    raise Exception(f"Failed to load all typelibraries. Missing requirements for files:\n{deferred_load}")
-            else:
-                namespace_dict.update(self.load_from_file_list(deferred_load, handle_max_deferred_strategy, deferred + 1))
+            namespace_dict.update(self.load_from_file_list(deferred_load, handle_max_deferred_strategy, deferred + 1))
 
         return namespace_dict
     

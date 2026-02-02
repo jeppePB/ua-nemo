@@ -1,11 +1,13 @@
 from __future__ import annotations
 import logging
+import pytest
 
 from pathlib import Path
 from typing import Callable
 
 from ua_nemo.parsers import NodesetLoader
 from ua_nemo.parsers.loader import HAS_SUBTYPE, HIERARCHICAL_UA_REFS
+from ua_nemo.core.exceptions import MissingRequiredModelError
 
 from tests.test_parsers.stubs import (
     NodeStub,
@@ -45,18 +47,27 @@ def test_load_defers_when_required_model_missing(tmp_path):
         f"""\
         <UANodeSet xmlns="{UA_NS}">
             <Models>
-                <Model ModelUri="urn:test:model">
-                <RequiredModel ModelUri="urn:missing:model"/>
+                <Model ModelUri="urn:test:model" Version="1.0">
+                    <RequiredModel ModelUri="urn:missing:dep1"/>
+                    <RequiredModel ModelUri="urn:missing:dep2"/>
                 </Model>
             </Models>
         </UANodeSet>
         """,
     )
 
-    ok, result = loader.load(xml_path, missing_requirements_strategy="defer")
-    assert ok is False
-    assert result == xml_path
+    with pytest.raises(MissingRequiredModelError) as ei:
+        loader.load(xml_path, missing_requirements_strategy="defer")
 
+    # Exception info should contain information about namespace metadata, 
+    # the missing requirements and the xml path of the nodeset that failed to load
+    exc = ei.value
+    assert exc.nodeset_path == xml_path
+    assert exc.requesting.uri == "urn:test:model"
+    assert exc.requesting.version == "1.0"
+
+    missing_uris = [dep.uri for dep in exc.missing]
+    assert missing_uris == ["urn:missing:dep1", "urn:missing:dep2"]
 
 def test_load_ignores_missing_required_models_when_configured(tmp_path, caplog):
     loader = make_loader(loaded_model_uris=set())
@@ -79,14 +90,12 @@ def test_load_ignores_missing_required_models_when_configured(tmp_path, caplog):
     )
 
     with caplog.at_level(logging.WARNING):
-        ok, result = loader.load(xml_path, missing_requirements_strategy="ignore")
+        res = loader.load(xml_path, missing_requirements_strategy="ignore")
     
     assert len(caplog.records) == 1
-    assert "required models are missing" in caplog.text.lower()
+    assert "missing required model" in caplog.text.lower()
 
-    assert ok is True
-
-    ns = next(iter(result.values()))
+    ns = next(iter(res.values()))
     assert ns.uri == "urn:test:model"
     assert "i=1001" in ns.nodes_by_id
 
@@ -115,10 +124,9 @@ def test_alias_resolution_applied_to_reference_type_and_target(tmp_path):
         """,
     )
 
-    ok, result = loader.load(xml_path)
-    assert ok is True
+    res = loader.load(xml_path)
 
-    ns = next(iter(result.values()))
+    ns = next(iter(res.values()))
     node = ns.nodes_by_id["i=9001"]
     assert len(node.references) == 1
 
@@ -147,10 +155,9 @@ def test_classify_reference_base_hierarchical_sets_base_type_to_self(tmp_path):
     """,
     )
 
-    ok, result = loader.load(xml_path)
-    assert ok is True
+    res = loader.load(xml_path)
 
-    ns = next(iter(result.values()))
+    ns = next(iter(res.values()))
     node = ns.nodes_by_id[HIERARCHICAL_UA_REFS[0]]
     assert node.base_type is not None
     assert node.base_type.to_string() == HIERARCHICAL_UA_REFS[0]
@@ -180,10 +187,9 @@ def test_classify_child_of_base_hierarchical_sets_base_type_to_own_nodeid(tmp_pa
         """,
     )
 
-    ok, result = loader.load(xml_path)
-    assert ok is True
+    res = loader.load(xml_path)
 
-    ns = next(iter(result.values()))
+    ns = next(iter(res.values()))
     child = ns.nodes_by_id["i=1000"]
     assert child.base_type is not None
     assert child.base_type.to_string() == "i=1000"
@@ -226,3 +232,72 @@ def test_load_from_file_list_defers_and_retries(tmp_path):
     assert isinstance(out, dict)
     assert "urn:A" in loaded_model_uris
     assert "urn:B" in loaded_model_uris
+
+def test_load_from_file_list_defers_and_ignores(tmp_path, caplog):
+    """
+    A.xml requires B.xml. A is deferrred until max_attempts before finally returning model
+    Loaded_model_uris are stored in NamespaceStub to simulate namespace context.
+    """
+    loaded_model_uris: set[str] = set()
+    loader = make_loader(loaded_model_uris=loaded_model_uris)
+
+    a = write_xml(
+        tmp_path,
+        "A.xml",
+        f"""\
+        <UANodeSet xmlns="{UA_NS}">
+            <Models>
+                <Model ModelUri="urn:A">
+                    <RequiredModel ModelUri="urn:B"/>
+                </Model>
+            </Models>
+        </UANodeSet>
+        """,
+    )
+
+
+    with caplog.at_level(logging.WARNING):
+        res = loader.load_from_file_list([a], handle_max_deferred_strategy="ignore")
+    
+    assert len(caplog.records) == 1
+    assert "missing required model" in caplog.text.lower()
+    assert isinstance(res, dict)
+    assert "urn:A" in loaded_model_uris
+
+def test_load_from_file_list_defers_and_raises(tmp_path, caplog):
+    """
+    A.xml requires B.xml. A is deferrred until max_attempts before finally returning model
+    Loaded_model_uris are stored in NamespaceStub to simulate namespace context.
+    """
+    loaded_model_uris: set[str] = set()
+    loader = make_loader(loaded_model_uris=loaded_model_uris)
+
+    xml_path = write_xml(
+        tmp_path,
+        "test_model.xml",
+        f"""\
+        <UANodeSet xmlns="{UA_NS}">
+            <Models>
+                <Model ModelUri="urn:test:model" Version="1.0">
+                    <RequiredModel ModelUri="urn:missing:dep1"/>
+                </Model>
+            </Models>
+        </UANodeSet>
+        """,
+    )
+
+
+    with caplog.at_level(logging.ERROR):
+        with pytest.raises(MissingRequiredModelError) as ei:
+            loader.load_from_file_list([xml_path], handle_max_deferred_strategy="raise")
+    
+    assert len(caplog.records) == 1
+    assert "failed to load required models" in caplog.text.lower()
+    
+    exc = ei.value
+    assert exc.nodeset_path == xml_path
+    assert exc.requesting.uri == "urn:test:model"
+    assert exc.requesting.version == "1.0"
+
+    missing_uris = [dep.uri for dep in exc.missing]
+    assert missing_uris == ["urn:missing:dep1"]
