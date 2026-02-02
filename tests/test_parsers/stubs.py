@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from ua_nemo.node_definitions import NodeClass
+from ua_nemo.types import NamespaceMetadata
 
 # Minimal API stubs
 class NodeIdStub:
@@ -74,6 +75,7 @@ class NamespaceStub:
         self.aliases: dict[str, NodeIdStub] = {}
         self.nodes_by_id: dict[str, NodeStub] = {}
         self.namespace_context = type("Ctx", (), {"namespace_dict_uri": self._loaded_model_uris})()
+        self.dependencies: list[NamespaceMetadata] = []
 
     @property
     def uri(self) -> str:
