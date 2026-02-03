@@ -1,4 +1,5 @@
 from __future__ import annotations
+import logging
 from enum import Enum
 from urllib.parse import urlparse
 
@@ -6,6 +7,7 @@ from . import node_definitions
 from .node_definitions import NodeClass
 from .types import QualifiedName, NamespaceMetadata
 
+logger = logging.getLogger(__name__)
 class AmbiguousChildError(LookupError):
     pass
     
@@ -470,7 +472,8 @@ class Namespace:
     @uri.setter
     def uri(self, uri:str):
         if self.uri:
-            raise ValueError("Attempting to set URI of model that already has an URI set.")
+            logger.warning("Attempted to set URI of model %s to %s.", self.uri, uri)
+            return
         if uri is None:
             raise ValueError("URI can not be set to None.")
         if not self.name:

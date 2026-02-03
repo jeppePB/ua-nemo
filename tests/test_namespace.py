@@ -1,4 +1,5 @@
 import pytest
+import logging
 from ua_nemo.node_model import (
     Namespace, 
     NamespaceContext, 
@@ -13,11 +14,14 @@ def test_create_namespace_defaults():
     assert ns.name is None
     assert ns.uri is None
 
-def test_uri_cannot_be_overwritten():
+def test_uri_cannot_be_overwritten(caplog):
     ns = Namespace()
     ns.uri = "http://yourcompany.com/test-types/"
-    with pytest.raises(ValueError):
-        ns.uri = "http://yourcompany.com/test-types/"
+    with caplog.at_level(logging.WARNING):
+        ns.uri = "thisfails"
+    
+    assert len(caplog.records) == 1
+    assert ns.uri in caplog.text.lower() and "thisfails" in caplog.text.lower()
 
 def test_set_uri_name_from_url_path():
     ns = Namespace()
