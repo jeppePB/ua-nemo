@@ -25,6 +25,8 @@ class FakeNamespace:
         """Helper for tests: make find_by_nodeid return this node."""
         self._nodes[nodeid] = node
         
+    def register_alias(self, alias, nodeid):
+        self._resolve_map[alias] = nodeid
 
     def find_by_nodeid(self, nodeid):
         return self._nodes.get(nodeid)
