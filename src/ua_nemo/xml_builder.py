@@ -122,7 +122,7 @@ def dump_model_to_xml_streaming(model:Namespace, file_path:Path):
                     if node.references:
                         with xf.element("References"):
                             for ref in node.references:
-                                ref_attrs = {"ReferenceType": ref.reference_type}
+                                ref_attrs = {"ReferenceType": ref.reference_type.to_string()}
                                 if not ref.is_forward:
                                     ref_attrs["IsForward"] = "false"
                                 with xf.element("Reference", ref_attrs):
