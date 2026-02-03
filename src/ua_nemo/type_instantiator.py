@@ -2,6 +2,7 @@ from .node_model import Namespace, NodeClass, Node
 
 from .utils import split_node_fields
 
+HAS_TYPEDEF_NODEID = "i=40"
 class TypeInstantiator:
     #TODO This needs to be cleaned up a bit. Not sure I even like using a class for this.
     #TODO Rewrite
@@ -31,7 +32,7 @@ class TypeInstantiator:
             attributes=attrs,
             subnodes=subnodes
         )
-        instance_node.add_reference("HasTypeDefinition", remapped_typedef.to_string())
+        instance_node.add_reference(HAS_TYPEDEF_NODEID, remapped_typedef.to_string())
         self.target_model.add_node(instance_node)
 
         # Instantiate children
