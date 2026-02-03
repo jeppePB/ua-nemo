@@ -8,7 +8,7 @@ import xml.etree.ElementTree as ET
 from ua_nemo.node_model import Node, Namespace, NodeId
 from ua_nemo.types import NamespaceMetadata
 from ua_nemo.node_definitions import NodeClass
-from .dtos import ParsedReference, ParsedNode
+from .dtos import ParsedReference
 from ua_nemo.core.exceptions import MissingRequiredModelError
 
 logger = logging.getLogger(__name__)
@@ -53,7 +53,7 @@ def extract_references(elem, ns) -> tuple[ParsedReference, ...]:
             out.append(ParsedReference(ref_type, target_text, is_forward))
     return tuple(out)
         
-def parse_models_event(event: str, elem, model: "Namespace") -> None:
+def parse_models_event(event: str, elem, model: Namespace) -> None:
     if event != "end":
         return
 
@@ -72,14 +72,14 @@ def parse_models_event(event: str, elem, model: "Namespace") -> None:
             NamespaceMetadata.from_xml_attrib(elem.attrib, is_mandatory=True)
         )
 
-def parse_alias_event(event: str, elem, model: "Namespace") -> None:
+def parse_alias_event(event: str, elem, model: Namespace) -> None:
     if event != "end":
         return
     if clean_tag(elem.tag) != "Alias":
         return
     model.add_alias(elem.attrib.get("Alias"), elem.text)
 
-def parse_namespace_uri_event(event: str, elem, model: "Namespace", state: NodesetParseState) -> None:
+def parse_namespace_uri_event(event: str, elem, model: Namespace, state: NodesetParseState) -> None:
     tag = clean_tag(elem.tag)
 
     # This control block is there just in case there is ever
@@ -100,7 +100,7 @@ def parse_namespace_uri_event(event: str, elem, model: "Namespace", state: Nodes
 def try_parse_node_event(
     event: str,
     elem,
-    model: "Namespace",
+    model: Namespace,
     ns,
     *,
     resolve_node_class,
@@ -151,10 +151,10 @@ def try_parse_node_event(
 class NodesetLoader:
     def __init__(
         self,
-        namespace_factory: Callable[[], "Namespace"] = None,
-        node_factory: Callable[..., "Node"] = None,
-        resolve_node_class: Callable[[str], "NodeClass"] = None,
-        split_node_fields: Callable[["NodeClass", dict], tuple[dict, dict]] = None,
+        namespace_factory: Callable[[], Namespace] = None,
+        node_factory: Callable[..., Node] = None,
+        resolve_node_class: Callable[[str], NodeClass] = None,
+        split_node_fields: Callable[[NodeClass, dict], tuple[dict, dict]] = None,
         progress: Callable[[int], None] | None = None
     ):
         
@@ -246,7 +246,7 @@ class NodesetLoader:
                 raise ValueError(f"Unsupported strategy: {strategy}")
 
     
-    def _classify_references(self, refs_to_classify: list["Node"]):
+    def _classify_references(self, refs_to_classify: list[Node]):
         for node in refs_to_classify:
             node.base_type = self._resolve_ua_basetype(node)
 
