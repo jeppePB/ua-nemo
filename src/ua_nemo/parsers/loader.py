@@ -30,6 +30,7 @@ class NodesetParseState:
     in_namespace_uris: bool = False
     header_checked: bool = False
     node_count: int = 0
+    nodeset_end: bool = False
 
 def clean_tag(tag:str) -> str:
     return tag.split("}", 1)[-1] if "}" in tag else tag
@@ -53,24 +54,18 @@ def extract_references(elem, ns) -> tuple[ParsedReference, ...]:
             out.append(ParsedReference(ref_type, target_text, is_forward))
     return tuple(out)
         
-def parse_models_event(event: str, elem, model: Namespace) -> None:
+def parse_models_event(event: str, elem, ns_metadata: Namespace) -> None:
     if event != "end":
         return
 
     tag = clean_tag(elem.tag)
 
     if tag == "Model":
-        # Only process if this Model is the one in <Models> section.
-        # In NodeSet2, <Model> appears under <Models>. (No other common uses.)
-        model_uri = elem.attrib.get("ModelUri")
-        if model_uri:
-            model.uri = model_uri
-        model.metadata = NamespaceMetadata.from_xml_attrib(elem.attrib, is_mandatory=False)
+        ns_metadata.append(NamespaceMetadata.from_xml_attrib(elem.attrib, is_mandatory=False))
 
     elif tag == "RequiredModel":
-        model.dependencies.append(
-            NamespaceMetadata.from_xml_attrib(elem.attrib, is_mandatory=True)
-        )
+        ns_metadata.append(NamespaceMetadata.from_xml_attrib(elem.attrib, is_mandatory=True))
+
 
 def parse_alias_event(event: str, elem, model: Namespace) -> None:
     if event != "end":
@@ -79,7 +74,7 @@ def parse_alias_event(event: str, elem, model: Namespace) -> None:
         return
     model.add_alias(elem.attrib.get("Alias"), elem.text)
 
-def parse_namespace_uri_event(event: str, elem, model: Namespace, state: NodesetParseState) -> None:
+def parse_namespace_uri_event(event: str, elem, ns_array: list, state: NodesetParseState) -> None:
     tag = clean_tag(elem.tag)
 
     # This control block is there just in case there is ever
@@ -95,7 +90,7 @@ def parse_namespace_uri_event(event: str, elem, model: Namespace, state: Nodeset
 
     if event == "end" and tag == "Uri" and state.in_namespace_uris:
         if elem.text:
-            model.add_namespace(elem.text)
+            ns_array.append(elem.text)
 
 def try_parse_node_event(
     event: str,
@@ -146,7 +141,8 @@ def try_parse_node_event(
     elem.clear()
     return node
 
-
+def check_nodeset_end(event:str, elem) -> bool:
+    return event == "end" and elem.tag.endswith("UANodeSet")
 
 class NodesetLoader:
     def __init__(
@@ -184,11 +180,15 @@ class NodesetLoader:
         context = ET.iterparse(xml_path, events=("start", "end"))
         _, root = next(context)
         
+        ns_metadata: list[NamespaceMetadata] = []
+        ns_array: list[str] = []
+
         for event, elem in context:
             if not state.header_checked:
-                parse_models_event(event, elem, model)
+                parse_models_event(event, elem, ns_metadata)
                 parse_alias_event(event, elem, model)
-                parse_namespace_uri_event(event, elem, model, state)
+                parse_namespace_uri_event(event, elem, ns_array, state)
+                state.nodeset_end = check_nodeset_end(event, elem)
 
             node = try_parse_node_event(
                 event,
@@ -200,14 +200,18 @@ class NodesetLoader:
                 node_factory=self._node_factory
             )
 
-            if node is None:
+            if node is None and not state.nodeset_end:
                 continue
 
-            # First time a supported node is hit, header has been fully parsed. Check deps and fail fast.
+            # First time a supported node is hit, header has been fully parsed. Set namespace data, check deps and fail fast.
             if not state.header_checked:
+                self._process_header_data(model, ns_metadata, ns_array)
                 self._check_missing_requirements(model, xml_path, missing_requirements_strategy)
                 state.header_checked = True
-            
+                if state.nodeset_end:
+                    logger.debug("Found no nodes in namespace")
+                    break
+
             state.node_count += 1
             if self._progress and state.node_count % 10000 == 0:
                 self._progress(state.node_count)
@@ -217,13 +221,27 @@ class NodesetLoader:
             if node.node_class == NodeClass.ReferenceType:
                 refs_to_classify.append(node)
             
-
         if not state.header_checked:
             self._check_missing_requirements(model, xml_path, missing_requirements_strategy)
         
         self._classify_references(refs_to_classify)
         return {model.name: model}
+    
+    def _process_header_data(self, model: Namespace, ns_metadata: list[NamespaceMetadata], ns_array: list[str]):
+        """Because some namespaces don't use the model tag, the namespace uri sometimes have to be pulled from the ns_array"""
+        for metadata in ns_metadata:
+            if not metadata.is_mandatory and not model.uri:
+                model.uri = metadata.uri
+                model.metadata = metadata
+            elif metadata.is_mandatory:
+                model.dependencies.append(metadata)
         
+        for uri in ns_array:
+            if not model.uri and not uri.endswith("/UA/"):
+                model.uri = uri
+                continue
+            model.add_namespace(uri)
+
     def _check_missing_requirements(self, model: Namespace, xml_path: Path, strategy: str):
         missing = [
             dep for dep in model.dependencies
