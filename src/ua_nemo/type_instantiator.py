@@ -1,8 +1,15 @@
-from .node_model import Namespace, NodeClass, Node
+from .node_model import Namespace, NodeClass, Node, NodeId
 
 from .utils import split_node_fields
 
-HAS_TYPEDEF_NODEID = "i=40"
+HIERARCHICAL_REF = NodeId.from_string("i=40")
+HAS_COMPONENT_REF = NodeId.from_string("i=47")
+HAS_ORDERED_COMPONENT_REF = NodeId.from_string("i=49")
+HAS_PROPERTY_REF = NodeId.from_string("i=46")
+
+HAS_MODELLING_RULE_REF = NodeId.from_string("i=37")
+MANDATORY_REF = NodeId.from_string("i=78")
+
 class TypeInstantiator:
     #TODO This needs to be cleaned up a bit. Not sure I even like using a class for this.
     #TODO Rewrite
@@ -32,12 +39,12 @@ class TypeInstantiator:
             attributes=attrs,
             subnodes=subnodes
         )
-        instance_node.add_reference(HAS_TYPEDEF_NODEID, remapped_typedef.to_string())
+        instance_node.add_reference(HIERARCHICAL_REF, remapped_typedef)
         self.target_model.add_node(instance_node)
 
         # Instantiate children
         for ref in type_node.references:
-            if ref.reference_type in ("HasComponent", "HasProperty", "HasOrderedComponent"):
+            if ref.reference_type in (HAS_COMPONENT_REF, HAS_PROPERTY_REF, HAS_ORDERED_COMPONENT_REF):
                 child_type_node = self.typelib_model.find_by_nodeid(ref.target_nodeid)
                 if child_type_node and (self._is_mandatory(child_type_node) or include_optional):
                     child_instance_id = f"{instance_nodeid}.{child_type_node.browse_name.name}"
@@ -58,7 +65,7 @@ class TypeInstantiator:
 
     def _is_mandatory(self, node:Node) -> bool:
         for ref in node.references:
-            if ref.reference_type == "HasModellingRule" and ref.target_nodeid.to_string() in ("i=78", "ns=0;i=78"):
+            if ref.reference_type == HAS_MODELLING_RULE_REF and ref.target_nodeid == MANDATORY_REF:
                 return True
         return False
 
