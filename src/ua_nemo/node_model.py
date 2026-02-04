@@ -171,7 +171,8 @@ class Reference:
             self.reference_type = self.source.namespace.resolve(self.reference_type)
         return self.source.namespace.find_by_nodeid(self.reference_type)
 
-
+#TODO Fix this bandaid
+HIERARCHICAL_REF = NodeId.from_string("i=40")
 class Node:
     __slots__ = (
         "minted_idx",
@@ -289,7 +290,7 @@ class Node:
     @property
     def type_definition(self) -> NodeId:
         for ref in self.references:
-            if ref.reference_type == "i=40":
+            if ref.reference_type == HIERARCHICAL_REF:
                 return ref.target_nodeid
         return None
     

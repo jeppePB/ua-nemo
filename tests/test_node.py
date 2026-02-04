@@ -1,4 +1,3 @@
-import pytest
 import types
 
 import ua_nemo.node_model as nm
@@ -34,7 +33,7 @@ def test_node_uri(ns):
 
 def test_type_definition_picks_i40(ns, fake_ref):
     n = nm.Node("ns=1;i=1", "1:Foo", ndef.NodeClass.Object, ns)
-    n.references.append(fake_ref("i=40", "ns=1;i=999", True, n))
+    n.references.append(fake_ref(nm.NodeId.from_string("i=40"), "ns=1;i=999", True, n))
     assert n.type_definition == "ns=1;i=999"
 
 def test_type_uri_prefers_found_type_node(ns, fake_ref):
@@ -42,7 +41,7 @@ def test_type_uri_prefers_found_type_node(ns, fake_ref):
     ns.register("ns=1;i=999", type_node)
 
     n = nm.Node("ns=1;i=1", "1:Foo", ndef.NodeClass.Object, ns)
-    n.references.append(fake_ref("i=40", "ns=1;i=999", True, n))
+    n.references.append(fake_ref(nm.NodeId.from_string("i=40"), "ns=1;i=999", True, n))
 
     assert n.type_uri == "urn:example#MyType"
 
