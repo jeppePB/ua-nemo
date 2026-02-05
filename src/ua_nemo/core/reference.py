@@ -8,6 +8,7 @@ class Reference:
     """
     __slots__ = ("reference_type", "target_nodeid", "is_forward", "source", "target_idx")
     reference_type: NodeId
+    source: NodeLike
     source_id: NodeId
     target_nodeid: NodeId
     is_forward: bool
@@ -24,6 +25,16 @@ class Reference:
     def __str__(self) -> str:
         direction = "->" if self.is_forward else "<-"
         return f"{self.reference_type} {direction} {self.target_nodeid}"
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Reference):
+            return NotImplemented
+        return (
+            self.source is other.source
+            and self.reference_type == other.reference_type
+            and self.target_nodeid == other.target_nodeid
+            and self.is_forward == other.is_forward
+    )
 
     def __init__(self, reference_type: str|NodeId, target_nodeid: str|NodeId, is_forward:bool, source:NodeLike):
         if source.namespace:
