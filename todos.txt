@@ -8,6 +8,6 @@
 - Node currently requires a lot of stuff in its initializer (full nid + bn + class + ns).
     Should fix that.
 
-- Fix deferred load in typelib loader. It should max out and get
-    an option to ignore namespaces that can not be found in loaded files.
 - Namespace array is accessed in multiple places.
+
+- Make Reference a pure data object. Resolve and find through indices in Namespace.
