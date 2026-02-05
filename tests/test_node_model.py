@@ -1,5 +1,5 @@
 from pathlib import Path
-from ua_nemo.node_model import Node, Namespace, NodeClass
+from ua_nemo.node_model import Namespace
 from ua_nemo.parsers import NodesetLoader
 
 #TODO The namespace context is a class variable, needs to be reset between test runs. That is not being done currently.

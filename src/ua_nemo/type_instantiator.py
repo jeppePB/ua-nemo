@@ -1,5 +1,7 @@
-from .node_model import Namespace, NodeClass, Node
-from .core import NodeId
+from .node_model import Namespace
+
+from .node_definitions import NodeClass
+from .core import NodeId, Node
 from .utils import split_node_fields
 
 HIERARCHICAL_REF = NodeId.from_string("i=40")
