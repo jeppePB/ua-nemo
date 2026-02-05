@@ -1,7 +1,7 @@
 from pathlib import Path
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
-from .node_model import Namespace, Node
+from .node_model import Namespace
 from .node_definitions import NODE_CLASSES
 from .utils import bool_to_str
 

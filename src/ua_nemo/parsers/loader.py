@@ -5,7 +5,8 @@ from dataclasses import dataclass
 
 import xml.etree.ElementTree as ET
 
-from ua_nemo.node_model import Node, Namespace, NodeId
+from ua_nemo.node_model import Node, Namespace 
+from ua_nemo.core import NodeId
 from ua_nemo.types import NamespaceMetadata
 from ua_nemo.node_definitions import NodeClass
 from .dtos import ParsedReference

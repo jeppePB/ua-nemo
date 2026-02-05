@@ -3,10 +3,10 @@ import logging
 from ua_nemo.node_model import (
     Namespace, 
     NamespaceContext, 
-    NodeId, 
     NodeClass, 
     Node
 )
+from ua_nemo.core import NodeId
 def test_create_namespace_defaults():
     ns = Namespace()
 

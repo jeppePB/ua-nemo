@@ -1,14 +1,15 @@
 import types
 
 import ua_nemo.node_model as nm
+from ua_nemo.core import NodeId
 import ua_nemo.node_definitions as ndef
 
 def test_create_node_nid_object(ns):
-    nid = nm.NodeId.from_string('ns=1;s=test')
+    nid = NodeId.from_string('ns=1;s=test')
 
     n = nm.Node(nid, 'test', ndef.NodeClass.Object, ns)
 
-    assert isinstance(n.node_id, nm.NodeId)
+    assert isinstance(n.node_id, NodeId)
     assert n.node_id == nid
     assert n.is_object is True
     assert n.is_variable is False
@@ -18,7 +19,7 @@ def test_create_node_str_nid(ns):
 
     n = nm.Node(nid, "test", ndef.NodeClass.Object, ns)
 
-    assert isinstance(n.node_id, nm.NodeId)
+    assert isinstance(n.node_id, NodeId)
     assert n.node_id.to_string() == nid
 
 def test_display_name_defaulted(ns):
@@ -33,7 +34,7 @@ def test_node_uri(ns):
 
 def test_type_definition_picks_i40(ns, fake_ref):
     n = nm.Node("ns=1;i=1", "1:Foo", ndef.NodeClass.Object, ns)
-    n.references.append(fake_ref(nm.NodeId.from_string("i=40"), "ns=1;i=999", True, n))
+    n.references.append(fake_ref(NodeId.from_string("i=40"), "ns=1;i=999", True, n))
     assert n.type_definition == "ns=1;i=999"
 
 def test_type_uri_prefers_found_type_node(ns, fake_ref):
@@ -41,7 +42,7 @@ def test_type_uri_prefers_found_type_node(ns, fake_ref):
     ns.register("ns=1;i=999", type_node)
 
     n = nm.Node("ns=1;i=1", "1:Foo", ndef.NodeClass.Object, ns)
-    n.references.append(fake_ref(nm.NodeId.from_string("i=40"), "ns=1;i=999", True, n))
+    n.references.append(fake_ref(NodeId.from_string("i=40"), "ns=1;i=999", True, n))
 
     assert n.type_uri == "urn:example#MyType"
 
@@ -58,7 +59,7 @@ def test_hierarchical_children_parents(ns, fake_ref):
     # Create a hierarchical ref-type node. For it to count as hierarchical in the current logic in
     # get_hierarchical_references it needs to have the base_type set (to literally anything at all)
     ref_type_node = nm.Node("i=200", "1:HasComponent", ndef.NodeClass.ReferenceType, ns)
-    ref_type_node.base_type = nm.NodeId.from_string("ns=0;i=33")
+    ref_type_node.base_type = NodeId.from_string("ns=0;i=33")
     ns.register("i=200", ref_type_node)
     ns._resolve_map["i=200"] = "i=200"
 

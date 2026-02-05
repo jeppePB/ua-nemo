@@ -1,6 +1,7 @@
 from pathlib import Path
 
-from .node_model import NodeId, Namespace
+from .node_model import Namespace
+from .core import NodeId
 from .type_instantiator import TypeInstantiator
 from .parsers import NodesetLoader
 from .types import QualifiedName
