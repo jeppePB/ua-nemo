@@ -1,11 +1,9 @@
 from enum import Enum
-
 class NodeIdType(Enum):
     NUMERIC = "i"
     STRING = "s"
     GUID = "g"
     OPAQUE = "b"
-
 
 class NodeId:
     __slots__ = ("ns_index", "id_type", "id")
@@ -17,6 +15,8 @@ class NodeId:
     def __init__(self, ns_index:int, id_type: NodeIdType, id:int|str):
         self.ns_index = ns_index
         self.id_type = id_type
+        if id_type == NodeIdType.NUMERIC:
+            id = int(id)
         self.id = id
 
     def __repr__(self) -> str:
