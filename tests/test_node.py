@@ -1,6 +1,5 @@
 import types
 
-import ua_nemo.node_model as nm
 from ua_nemo import core
 from ua_nemo.core import NodeId, Node
 
@@ -51,7 +50,7 @@ def test_type_uri_prefers_found_type_node(ns, fake_ref):
 
 def test_type_uri_falls_back_to_self_when_abstract_and_type_missing(ns, monkeypatch):
     monkeypatch.setattr(
-        nm,
+        ua_nemo,
         "node_definitions",
         types.SimpleNamespace(TYPE_CLASSES={ndef.NodeClass.ObjectType, ndef.NodeClass.VariableType}),
     )
