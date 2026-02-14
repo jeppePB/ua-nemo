@@ -234,7 +234,7 @@ class Namespace:
         self._next_node_idx += 1
         return node
 
-    def __derive_namespace_name(uri: str) -> str:
+    def __derive_namespace_name(self, uri: str) -> str:
         parsed = urlparse(uri)
 
         # URNs: urn:yourcompany:test-types -> use everything after the scheme
