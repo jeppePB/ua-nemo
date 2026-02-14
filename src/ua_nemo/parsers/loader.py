@@ -5,8 +5,9 @@ from dataclasses import dataclass
 
 import xml.etree.ElementTree as ET
 
-from ua_nemo.node_model import Namespace 
-from ua_nemo.core import NodeId, Node
+from ua_nemo.core import NodeId, Node, Namespace
+from ua_nemo.node_model import NamespaceContext
+
 from ua_nemo.types import NamespaceMetadata
 from ua_nemo.node_definitions import NodeClass
 from .dtos import ParsedReference
@@ -157,8 +158,7 @@ class NodesetLoader:
         
         # To make the class more easily testable, it is possible to swap out each component with a test method.
         if namespace_factory is None or node_factory is None or resolve_node_class is None or split_node_fields is None:
-            from ua_nemo.node_model import Namespace
-            from ua_nemo.core import Node
+            from ua_nemo.core import Node, Namespace
             from ua_nemo.node_definitions import resolve_node_class as _rnc
             from ua_nemo.utils import split_node_fields as _snf
             namespace_factory = namespace_factory or Namespace
@@ -311,6 +311,8 @@ class NodesetLoader:
         Returns:
             dict: Mapping of model_name:model
         """
+        if not Namespace._default_namespace_context:
+            Namespace._default_namespace_context = NamespaceContext()
         # Max attempts to load namespaces if required models are missing
         max_attempts = 3
         max_attempts_reached = deferred >= max_attempts
