@@ -1,10 +1,7 @@
-import logging
-
 from pathlib import Path
 
 from ua_nemo.types import NamespaceMetadata
 
-logger = logging.getLogger(__name__)
 class MissingRequiredModelError(Exception):
     requesting:     NamespaceMetadata
     missing:        list[NamespaceMetadata]
