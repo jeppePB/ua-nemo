@@ -17,12 +17,11 @@ class Namespace:
     #TODO Add ".from_nodeset" function to load nodemodels from files
     
     _next_node_idx: int
-    _default_namespace_context: ContextLike = None
     _uri: str
     _nsidx_model_cache: dict[int, Namespace]
 
     namespace_array: list
-    namespace_context: ContextLike = None
+    namespace_context: ContextLike
     aliases: dict[str, NodeId]
     is_type_namespace: bool
     is_ua_namespace: bool
@@ -40,7 +39,7 @@ class Namespace:
     metadata: NamespaceMetadata
     dependencies: list[NamespaceMetadata]
 
-    def __init__(self, namespace_context:ContextLike = None):
+    def __init__(self, namespace_context:ContextLike):
         self.name = None
         self._uri = None
         self._next_node_idx = 0
@@ -61,10 +60,7 @@ class Namespace:
         self.metadata = None
         self.dependencies = []
 
-        if namespace_context is None:
-            self.namespace_context = Namespace._default_namespace_context
-        else:
-            self.namespace_context = namespace_context
+        self.namespace_context = namespace_context
         
         self.aliases = {}
 

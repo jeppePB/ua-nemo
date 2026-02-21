@@ -1,6 +1,7 @@
 import pytest
 
 from ua_nemo.core import Namespace
+from ua_nemo.node_model import NamespaceContext
 
 # ---------- FAKES / TEST DOUBLES ----------
 
@@ -82,8 +83,9 @@ def fake_ref():
         return FakeReference(reference_type, target_nodeid, is_forward, source)
     return _make
 
-@pytest.fixture(autouse=True)
-def reset_default_namespace_context():
-    Namespace._default_namespace_context = None
-    yield
-    Namespace._default_namespace_context = None
+@pytest.fixture
+def ctx():
+    ctx = NamespaceContext()
+    yield ctx
+    ctx = None
+    

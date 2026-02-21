@@ -1,6 +1,9 @@
 from dataclasses import dataclass
 from ua_nemo.node_definitions import NodeClass
 from ua_nemo.types import NamespaceMetadata
+from ua_nemo.node_model import NamespaceContext
+
+#! TODO clean up this ai generated slop
 
 # Minimal API stubs
 class NodeIdStub:
@@ -66,7 +69,7 @@ class NamespaceStub:
     - required model check uses namespace_context.namespace_dict_uri
     - find_by_nodeid used by _resolve_ua_basetype recursion
     """
-    def __init__(self, loaded_model_uris: set[str] | None = None):
+    def __init__(self, namespace_context: NamespaceContext = None, loaded_model_uris: set[str] | None = None):
         self._loaded_model_uris = loaded_model_uris if loaded_model_uris is not None else set()
 
         self._uri = ""
@@ -74,7 +77,7 @@ class NamespaceStub:
         self.ns_info = {}
         self.aliases: dict[str, NodeIdStub] = {}
         self.nodes_by_id: dict[str, NodeStub] = {}
-        self.namespace_context = type("Ctx", (), {"namespace_dict_uri": self._loaded_model_uris})()
+        self.namespace_context = namespace_context
         self.dependencies: list[NamespaceMetadata] = []
 
     @property

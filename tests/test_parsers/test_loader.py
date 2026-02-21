@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Callable
 
 from ua_nemo.parsers import NodesetLoader
+from ua_nemo.node_model import NamespaceContext
 from ua_nemo.parsers.loader import HAS_SUBTYPE, HIERARCHICAL_UA_REFS
 from ua_nemo.core.exceptions import MissingRequiredModelError
 
@@ -29,17 +30,20 @@ def write_xml(tmp_path: Path, filename: str, xml_text: str) -> Path:
 
 def make_loader(
         loaded_model_uris: set[str] | None = None, 
-        progress: Callable[[int], None] | None = None) -> NodesetLoader:
+        progress: Callable[[int], None] | None = None,) -> NodesetLoader:
+    
+    
     return NodesetLoader(
-        namespace_factory=lambda: NamespaceStub(loaded_model_uris=loaded_model_uris),
+        namespace_factory=NamespaceStub,
         node_factory=NodeStub,
         resolve_node_class=resolve_node_class_stub,
         split_node_fields=split_node_fields_stub,
+        context_factory=NamespaceContext,
         progress=progress,
     )
 
-def test_load_defers_when_required_model_missing(tmp_path):
-    loader = make_loader(loaded_model_uris=set())
+def test_load_defers_when_required_model_missing(tmp_path, ctx):
+    loader = make_loader()
 
     xml_path = write_xml(
         tmp_path,
@@ -57,7 +61,7 @@ def test_load_defers_when_required_model_missing(tmp_path):
     )
 
     with pytest.raises(MissingRequiredModelError) as ei:
-        loader.load(xml_path, missing_requirements_strategy="defer")
+        loader.load(xml_path, ctx, missing_requirements_strategy="defer")
 
     # Exception info should contain information about namespace metadata, 
     # the missing requirements and the xml path of the nodeset that failed to load
@@ -195,13 +199,12 @@ def test_classify_child_of_base_hierarchical_sets_base_type_to_own_nodeid(tmp_pa
     assert child.base_type.to_string() == "i=1000"
 
 
-def test_load_from_file_list_defers_and_retries(tmp_path):
+def test_load_from_file_list_defers_and_retries(tmp_path, ctx):
     """
     A.xml requires B.xml. First attempt defers A, loads B, then retries A.
     Loaded_model_uris are stored in NamespaceStub to simulate namespace context.
     """
-    loaded_model_uris: set[str] = set()
-    loader = make_loader(loaded_model_uris=loaded_model_uris)
+    loader = make_loader()
 
     a = write_xml(
         tmp_path,
@@ -230,8 +233,8 @@ def test_load_from_file_list_defers_and_retries(tmp_path):
 
     out = loader.load_from_file_list([a, b])
     assert isinstance(out, dict)
-    assert "urn:A" in loaded_model_uris
-    assert "urn:B" in loaded_model_uris
+    assert "urn:A" in ctx.namespace_dict_uri
+    assert "urn:B" in ctx.namespace_dict_uri
 
 def test_load_from_file_list_defers_and_ignores(tmp_path, caplog):
     """

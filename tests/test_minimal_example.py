@@ -4,6 +4,7 @@ import pandas as pd
 
 from ua_nemo.engine import ModelBuilderEngine
 from ua_nemo.core import NodeId, Namespace
+from ua_nemo.node_model import NamespaceContext
 from ua_nemo.utils import normalize_bool
 from ua_nemo.xml_builder import dump_model_to_xml_streaming
 
@@ -91,11 +92,11 @@ def create_nodes(model:Namespace, objects:pd.DataFrame, relations:pd.DataFrame):
             instantiated_node.add_reference(reference_type=ref_type.to_string(), target_nodeid=target_node, is_forward=normalize_bool(row.IsForward))
 
 
-def test_minimal_example():
+def test_minimal_example(ctx):
     global engine
     engine = ModelBuilderEngine()
     engine.load_typelibraries(TYPELIB_PATH)
-    model = Namespace()
+    model = Namespace(ctx)
     model.uri = TEST_URI
 
     objects = load_objects(OBJECTS_PATH)

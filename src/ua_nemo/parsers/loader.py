@@ -147,33 +147,59 @@ def check_nodeset_end(event:str, elem) -> bool:
     return event == "end" and elem.tag.endswith("UANodeSet")
 
 class NodesetLoader:
+    _namespace_factory: Callable[[], Namespace]
+    _node_factory: Callable[..., Node]
+    _resolve_node_class: Callable[[str], NodeClass]
+    _split_node_fields: Callable[[NodeClass, dict], tuple[dict, dict]]
+    _progress: Callable[[int], None] | None
+    _context_factory: Callable[[], NamespaceContext]
+
     def __init__(
         self,
         namespace_factory: Callable[[], Namespace] = None,
         node_factory: Callable[..., Node] = None,
         resolve_node_class: Callable[[str], NodeClass] = None,
         split_node_fields: Callable[[NodeClass, dict], tuple[dict, dict]] = None,
-        progress: Callable[[int], None] | None = None
+        progress: Callable[[int], None] | None = None,
+        context_factory: Callable[[], NamespaceContext] = None
     ):
         
         # To make the class more easily testable, it is possible to swap out each component with a test method.
-        if namespace_factory is None or node_factory is None or resolve_node_class is None or split_node_fields is None:
+        if (
+            namespace_factory is None 
+            or node_factory is None 
+            or resolve_node_class is None 
+            or split_node_fields is None
+            or context_factory is None):
+
             from ua_nemo.core import Node, Namespace
+            from ua_nemo.node_model import NamespaceContext
             from ua_nemo.node_definitions import resolve_node_class as _rnc
             from ua_nemo.utils import split_node_fields as _snf
+
             namespace_factory = namespace_factory or Namespace
             node_factory = node_factory or Node
             resolve_node_class = resolve_node_class or _rnc
             split_node_fields = split_node_fields or _snf
+            context_factory = context_factory or NamespaceContext
         
         self._namespace_factory = namespace_factory
         self._node_factory = node_factory
         self._resolve_node_class = resolve_node_class
         self._split_node_fields = split_node_fields
         self._progress = progress
+        self._context_factory = context_factory
 
-    def load(self, xml_path: Path, missing_requirements_strategy: str = "defer") -> dict[str, Namespace]:
-        model = self._namespace_factory()
+    def load(
+            self, 
+            xml_path: Path, 
+            namespace_context: NamespaceContext = None, 
+            missing_requirements_strategy: str = "defer") -> dict[str, Namespace]:
+        
+        if not namespace_context:
+            namespace_context = self._context_factory()
+        
+        model = self._namespace_factory(namespace_context)
         ns = {"ua": "http://opcfoundation.org/UA/2011/03/UANodeSet.xsd"}
 
         state = NodesetParseState()
@@ -311,8 +337,7 @@ class NodesetLoader:
         Returns:
             dict: Mapping of model_name:model
         """
-        if not Namespace._default_namespace_context:
-            Namespace._default_namespace_context = NamespaceContext()
+        namespace_context = NamespaceContext()
         # Max attempts to load namespaces if required models are missing
         max_attempts = 3
         max_attempts_reached = deferred >= max_attempts
@@ -337,7 +362,10 @@ class NodesetLoader:
                 continue
             try:
                 strategy = handle_max_deferred_strategy if max_attempts_reached else "defer"
-                namespace_dict.update(self.load(file, missing_requirements_strategy=strategy))
+                namespace_dict.update(self.load(
+                    file, 
+                    namespace_context=namespace_context,
+                    missing_requirements_strategy=strategy))
             except MissingRequiredModelError as e:
                 if max_attempts_reached and handle_max_deferred_strategy == "raise":
                     logger.error("Failed to load required models for nodeset")
