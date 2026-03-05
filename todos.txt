@@ -10,4 +10,6 @@
 
 - Namespace array is accessed in multiple places.
 
+- Make loader return a namespacecontext
+
 - Make Reference a pure data object. Resolve and find through indices in Namespace.

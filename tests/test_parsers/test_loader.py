@@ -34,15 +34,14 @@ def make_loader(
     
     
     return NodesetLoader(
-        namespace_factory=NamespaceStub,
-        node_factory=NodeStub,
+        # node_factory=NodeStub,
         resolve_node_class=resolve_node_class_stub,
         split_node_fields=split_node_fields_stub,
         context_factory=NamespaceContext,
         progress=progress,
     )
 
-def test_load_defers_when_required_model_missing(tmp_path, ctx):
+def test_load_defers_when_required_model_missing(tmp_path):
     loader = make_loader()
 
     xml_path = write_xml(
@@ -61,7 +60,7 @@ def test_load_defers_when_required_model_missing(tmp_path, ctx):
     )
 
     with pytest.raises(MissingRequiredModelError) as ei:
-        loader.load(xml_path, ctx, missing_requirements_strategy="defer")
+        loader.load(xml_path, missing_requirements_strategy="defer")
 
     # Exception info should contain information about namespace metadata, 
     # the missing requirements and the xml path of the nodeset that failed to load
@@ -199,7 +198,7 @@ def test_classify_child_of_base_hierarchical_sets_base_type_to_own_nodeid(tmp_pa
     assert child.base_type.to_string() == "i=1000"
 
 
-def test_load_from_file_list_defers_and_retries(tmp_path, ctx):
+def test_load_from_file_list_defers_and_retries(tmp_path):
     """
     A.xml requires B.xml. First attempt defers A, loads B, then retries A.
     Loaded_model_uris are stored in NamespaceStub to simulate namespace context.
@@ -231,8 +230,9 @@ def test_load_from_file_list_defers_and_retries(tmp_path, ctx):
         """,
             )
 
-    out = loader.load_from_file_list([a, b])
-    assert isinstance(out, dict)
+    res = loader.load_from_file_list([a, b])
+    assert isinstance(res, dict)
+    ctx = next(iter(res.values())).namespace_context
     assert "urn:A" in ctx.namespace_dict_uri
     assert "urn:B" in ctx.namespace_dict_uri
 
@@ -241,9 +241,7 @@ def test_load_from_file_list_defers_and_ignores(tmp_path, caplog):
     A.xml requires B.xml. A is deferrred until max_attempts before finally returning model
     Loaded_model_uris are stored in NamespaceStub to simulate namespace context.
     """
-    loaded_model_uris: set[str] = set()
-    loader = make_loader(loaded_model_uris=loaded_model_uris)
-
+    loader = make_loader()
     a = write_xml(
         tmp_path,
         "A.xml",
@@ -260,12 +258,14 @@ def test_load_from_file_list_defers_and_ignores(tmp_path, caplog):
 
 
     with caplog.at_level(logging.WARNING):
-        res = loader.load_from_file_list([a], handle_max_deferred_strategy="ignore")
+        res = loader.load_from_file_list([a], handle_max_deferred_strategy="ignore", max_defer_attempts=2)
     
     assert len(caplog.records) == 1
     assert "missing required model" in caplog.text.lower()
     assert isinstance(res, dict)
-    assert "urn:A" in loaded_model_uris
+    ctx = next(iter(res.values())).namespace_context
+
+    assert "urn:A" in ctx.namespace_dict_uri
 
 def test_load_from_file_list_defers_and_raises(tmp_path, caplog):
     """

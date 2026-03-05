@@ -194,7 +194,7 @@ class NodesetLoader:
             self, 
             xml_path: Path, 
             namespace_context: NamespaceContext = None, 
-            missing_requirements_strategy: str = "defer") -> dict[str, Namespace]:
+            missing_requirements_strategy: str = "ignore") -> dict[str, Namespace]:
         
         if not namespace_context:
             namespace_context = self._context_factory()
@@ -283,6 +283,7 @@ class NodesetLoader:
                     missing=missing,
                     nodeset_path=xml_path
                 )
+            
             elif strategy == "ignore":
                 logger.warning(
                     "Missing required model(s) for %s while loading %s: %s",
@@ -316,7 +317,12 @@ class NodesetLoader:
 
         return None
 
-    def load_from_path(self, typelib_path: Path, handle_max_deferred_strategy:str="ignore") -> dict[str, Namespace]:
+    def load_from_path(self, 
+                       typelib_path: Path,
+                       namespace_context: NamespaceContext = None,
+                       *, 
+                       handle_max_deferred_strategy:str="ignore",
+                       max_defer_attemps=3) -> dict[str, Namespace]:
         """Loads typelibraries from a directory path
 
         Args:
@@ -326,9 +332,20 @@ class NodesetLoader:
             dict: Mapping of model_name:model
         """
         xml_files = list(typelib_path.glob("*.xml"))
-        return self.load_from_file_list(xml_files, handle_max_deferred_strategy)
+        return self.load_from_file_list(
+            xml_files, 
+            namespace_context, 
+            handle_max_deferred_strategy=handle_max_deferred_strategy,
+            max_defer_attempts=max_defer_attemps)
         
-    def load_from_file_list(self, file_list:list[str|Path], handle_max_deferred_strategy:str="ignore", deferred=0) -> dict[str, Namespace]:
+    def load_from_file_list(
+            self, 
+            file_list:list[str|Path], 
+            namespace_context: NamespaceContext = None,
+            *, 
+            handle_max_deferred_strategy:str="ignore",
+            max_defer_attempts=3,
+            deferred=0) -> dict[str, Namespace]:
         """Legacy support
 
         Args:
@@ -337,9 +354,10 @@ class NodesetLoader:
         Returns:
             dict: Mapping of model_name:model
         """
-        namespace_context = NamespaceContext()
+        if not namespace_context:
+            namespace_context = NamespaceContext()
         # Max attempts to load namespaces if required models are missing
-        max_attempts = 3
+        max_attempts = max_defer_attempts
         max_attempts_reached = deferred >= max_attempts
 
         file_list = [Path(f) for f in file_list]
@@ -375,7 +393,13 @@ class NodesetLoader:
                     deferred_load.append(file)
             
         if deferred_load:
-            namespace_dict.update(self.load_from_file_list(deferred_load, handle_max_deferred_strategy, deferred + 1))
+            namespace_dict.update(
+                self.load_from_file_list(
+                    deferred_load,
+                    namespace_context,
+                    handle_max_deferred_strategy = handle_max_deferred_strategy,
+                    max_defer_attempts=max_defer_attempts,
+                    deferred = deferred + 1))
 
         return namespace_dict
     
