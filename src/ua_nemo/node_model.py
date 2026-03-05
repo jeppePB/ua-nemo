@@ -4,9 +4,14 @@ from .core import NodeId, Namespace
 
 class NamespaceContext:
     #TODO Needs a cleanup, fairly sure this contains duplicate functionality
-    namespace_dict: dict[str, Namespace] = {}
-    namespace_dict_uri: dict[str, Namespace] = {}
-    known_models: list[str] = []    #TODO Check whether this can be removed
+    namespace_dict: dict[str, Namespace]
+    namespace_dict_uri: dict[str, Namespace]
+    known_models: list[str]    #TODO Check whether this can be removed
+
+    def __init__(self):
+        self.namespace_dict = {}
+        self.namespace_dict_uri = {}
+        self.known_models = []
 
     #? Would I like to automatically load the ua nodeset here? 
     def register_model(self, model:Namespace):
