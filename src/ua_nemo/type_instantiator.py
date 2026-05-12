@@ -1,8 +1,6 @@
-from .node_model import Namespace
-
-from .node_definitions import NodeClass
-from .core import NodeId, Node
-from .utils import split_node_fields
+from ua_nemo.core import Namespace, NodeId, Node
+from ua_nemo.node_definitions import NodeClass
+from ua_nemo.utils import split_node_fields
 
 HIERARCHICAL_REF = NodeId.from_string("i=40")
 HAS_COMPONENT_REF = NodeId.from_string("i=47")

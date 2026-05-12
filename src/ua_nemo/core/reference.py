@@ -1,4 +1,4 @@
-from . import NodeId
+from ua_nemo.core.node_id import NodeId
 from ua_nemo.types._protocols import NodeLike
 
 class Reference:

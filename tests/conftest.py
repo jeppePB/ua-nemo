@@ -1,7 +1,6 @@
 import pytest
 
-import ua_nemo.node_model as nm
-from ua_nemo.node_model import Namespace
+from ua_nemo.core import Namespace
 
 # ---------- FAKES / TEST DOUBLES ----------
 

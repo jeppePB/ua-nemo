@@ -1,4 +1,4 @@
-from .node_definitions import NodeClass, get_expected_attributes, get_expected_subnodes
+from ua_nemo.node_definitions import NodeClass, get_expected_attributes, get_expected_subnodes
 
 def normalize_bool(input_string:str) -> bool:
     #! Hacky fix

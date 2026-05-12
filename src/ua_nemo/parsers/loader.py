@@ -5,11 +5,11 @@ from dataclasses import dataclass
 
 import xml.etree.ElementTree as ET
 
-from ua_nemo.node_model import Namespace 
+from ua_nemo.core import Namespace
 from ua_nemo.core import NodeId, Node
 from ua_nemo.types import NamespaceMetadata
 from ua_nemo.node_definitions import NodeClass
-from .dtos import ParsedReference
+from ua_nemo.parsers.dtos import ParsedReference
 from ua_nemo.core.exceptions import MissingRequiredModelError
 
 logger = logging.getLogger(__name__)
@@ -157,8 +157,7 @@ class NodesetLoader:
         
         # To make the class more easily testable, it is possible to swap out each component with a test method.
         if namespace_factory is None or node_factory is None or resolve_node_class is None or split_node_fields is None:
-            from ua_nemo.node_model import Namespace
-            from ua_nemo.core import Node
+            from ua_nemo.core import Namespace, Node
             from ua_nemo.node_definitions import resolve_node_class as _rnc
             from ua_nemo.utils import split_node_fields as _snf
             namespace_factory = namespace_factory or Namespace

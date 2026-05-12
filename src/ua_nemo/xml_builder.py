@@ -1,9 +1,9 @@
 from pathlib import Path
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
-from .node_model import Namespace
-from .node_definitions import NODE_CLASSES
-from .utils import bool_to_str
+from ua_nemo.core import Namespace
+from ua_nemo.node_definitions import NODE_CLASSES
+from ua_nemo.utils import bool_to_str
 
 def dump_model_to_xml(model:Namespace, file_path=None):
     #TODO Rewrite to use LXML. This also barely supports literally anything.
