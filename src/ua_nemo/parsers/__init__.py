@@ -1,1 +1,1 @@
-from .loader import NodesetLoader
+from ua_nemo.parsers.loader import NodesetLoader

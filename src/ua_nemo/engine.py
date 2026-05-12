@@ -1,9 +1,9 @@
 from pathlib import Path
 
-from .node_model import NodeId, Namespace
-from .type_instantiator import TypeInstantiator
-from .parsers import NodesetLoader
-from .types import QualifiedName
+from ua_nemo.core import Namespace, NodeId
+from ua_nemo.type_instantiator import TypeInstantiator
+from ua_nemo.parsers import NodesetLoader
+from ua_nemo.types import QualifiedName
 
 class ModelBuilderEngine:
     

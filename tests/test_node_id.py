@@ -1,6 +1,6 @@
 import pytest
 
-from ua_nemo.node_model import NodeId, NodeIdType
+from ua_nemo.core.node_id import NodeId, NodeIdType
 
 #TODO Vibe coded tests, review these
 

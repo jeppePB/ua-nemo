@@ -1,8 +1,8 @@
 import pytest
 from unittest.mock import MagicMock
 
-from src.ua_nemo.node_model import Reference, Node, NodeId
-from src.ua_nemo.node_definitions import NodeClass
+from ua_nemo.core import Reference, Node, NodeId
+from ua_nemo.node_definitions import NodeClass
 
 @pytest.fixture(autouse=True, scope="function")
 def add_alias(ns):

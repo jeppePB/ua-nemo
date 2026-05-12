@@ -1,12 +1,10 @@
 import pytest
 import logging
-from ua_nemo.node_model import (
-    Namespace, 
-    NamespaceContext, 
-    NodeId, 
-    NodeClass, 
-    Node
-)
+
+from ua_nemo.core import Namespace, NamespaceContext
+from ua_nemo.node_definitions import NodeClass
+from ua_nemo.core import NodeId, Node
+
 def test_create_namespace_defaults():
     ns = Namespace()
 

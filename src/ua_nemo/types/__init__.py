@@ -1,1 +1,1 @@
-from .qualified_name import QualifiedName, NamespaceMetadata
+from ua_nemo.types.qualified_name import QualifiedName, NamespaceMetadata
