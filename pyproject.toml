@@ -12,6 +12,11 @@ requires-python = ">=3.10"
 dependencies = [
     "lxml",
 ]
+[project.optional-dependencies]
+memory-profiling = [
+    "memray>=1.10",
+    "pytest-memray>=1.5"
+]
 
 [tool.setuptools]
 package-dir = {"" = "src"}
@@ -20,7 +25,10 @@ package-dir = {"" = "src"}
 where = ["src"]
 
 [tool.pytest.ini_options]
-pythonpath = ["src"]
+pythonpath = ["src", "."]
+markers = [
+    "memory_profile: tests for memory profiling",
+]
 
 [tool.setuptools.package-data]
 ua_nemo = [
