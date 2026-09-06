@@ -6,15 +6,17 @@ from ua_nemo.types._protocols import NamespaceLike, NodeLike
 
 class NamespaceContext:
     #TODO Needs a cleanup, fairly sure this contains duplicate functionality
-    namespace_dict: dict[str, NamespaceLike] = {}
-    namespace_dict_uri: dict[str, NamespaceLike] = {}
-    known_models: list[str] = []    #TODO Check whether this can be removed
+    namespace_dict: dict[str, NamespaceLike]
+    namespace_dict_uri: dict[str, NamespaceLike]
+
+    def __init__(self):
+        self.namespace_dict = {}
+        self.namespace_dict_uri = {}
 
     #? Would I like to automatically load the ua nodeset here?
     def register_model(self, model: NamespaceLike) -> None:
         self.namespace_dict[model.name] = model
         self.namespace_dict_uri[model.uri] = model
-        self.known_models.append(model.uri)
 
         if not model.name == "UA":
             ua_namespace = self.namespace_dict.get("UA")
@@ -45,7 +47,7 @@ class NamespaceContext:
     def resolve_node(self, nid:NodeId, from_ns: NamespaceLike) -> NodeLike | None:
         target_ns = from_ns.namespace_array[nid.ns_index]
         if nid.ns_index > 1:
-            
+            pass
 
     def remap_nodeid(self, nid: NodeId, from_model: NamespaceLike, to_model: NamespaceLike) -> NodeId:
         uri = from_model.namespace_array[nid.ns_index]
