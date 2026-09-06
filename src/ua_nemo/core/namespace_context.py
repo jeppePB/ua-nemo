@@ -45,9 +45,22 @@ class NamespaceContext:
         return target_model.namespace_array.index(uri)
 
     def resolve_node(self, nid:NodeId, from_ns: NamespaceLike) -> NodeLike | None:
-        target_ns = from_ns.namespace_array[nid.ns_index]
-        if nid.ns_index > 1:
-            pass
+        """ Finds a node across namespaces. If the target namespace uri does not exist in the namespace context,
+        returns None.
+        """
+        # This function assumes that searches for local nodes never reach the namespace-context level.
+        target_ns = self.namespace_dict_uri.get(
+            from_ns.namespace_array[nid.ns_index])
+
+        if target_ns is None:
+            return None
+        
+        if nid.ns_index == 0:   # UA namespace
+            return target_ns.find_by_nodeid(nid)
+        
+        else:
+            norm_nid = NodeId(1, nid.id_type, nid.id)
+            return target_ns.find_by_nodeid(norm_nid)                
 
     def remap_nodeid(self, nid: NodeId, from_model: NamespaceLike, to_model: NamespaceLike) -> NodeId:
         uri = from_model.namespace_array[nid.ns_index]

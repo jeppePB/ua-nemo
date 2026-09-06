@@ -235,7 +235,7 @@ def test_find_node_by_idx():
     node = Node("ns=1;i=1", "1:Foo", NodeClass.Object, ns)
     ns.add_node(node)
 
-    assert ns.find_by_idx(0) == node
+    assert ns._find_by_idx(0) == node
 
 def test_find_node_by_nodeid():
     #TODO Replace og find_by_nodeid

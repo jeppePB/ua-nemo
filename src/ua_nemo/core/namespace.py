@@ -201,7 +201,8 @@ class Namespace:
             if node.node_class in node_definitions.TYPE_CLASSES:
                 self.is_type_namespace = True
 
-    def find_by_idx(self, idx: int) -> Node | None:
+    def _find_by_idx(self, idx: int) -> Node | None:
+        """ Finds a node by its minted internal idx. Returns None if it does not exist. """
         if 0 <= idx < len(self.nodes_by_idx):
             return self.nodes_by_idx[idx]
         return None
@@ -224,48 +225,17 @@ class Namespace:
         self._nsidx_model_cache[ns_idx] = ns
         return ns
 
-    def find_by_nodeid(self, node_id: str | NodeId) -> Node:
-        # Fast path - ns is clearly local
+    def find_by_nodeid(self, node_id: str | NodeId) -> Node | None:
+        """ Finds a node by its NodeId. Returns None if the node does not exist.
+        """
         nid = node_id if isinstance(node_id, NodeId) else NodeId.from_string(node_id)
 
         local_idx = 0 if self.is_ua_namespace else 1
         if nid.ns_index == local_idx:
             idx = self.nid_to_idx.get(nid)
-            return None if idx is None else self.find_by_idx(idx)
+            return self._find_by_idx(idx)
 
-        return self.namespace_context.resolve_node(node_id, self)
-        # if isinstance(node_id, str) and node_id.startswith("ns=1;"):
-        #     idx = self.nid_to_idx.get(node_id)
-        #     return None if idx is None else self.find_by_idx(idx)
-
-        # nid = node_id if isinstance(node_id, NodeId) else NodeId.from_string(node_id)
-
-        # def _fast_lookup(model: Namespace, nid_str: str) -> Node | None:
-        #     idx = model.nid_to_idx.get(nid_str)
-        #     return None if idx is None else model.find_by_idx(idx)
-
-        # # Local model, kept around just in case
-        # if nid.ns_index == 1:
-        #     nid_str = nid.to_string()
-        #     return _fast_lookup(self, nid_str)
-
-        # # UA namespace
-        # if nid.ns_index == 0:
-        #     if self.is_ua_namespace:
-        #         nid_str = nid.to_string()
-        #         return _fast_lookup(self, nid_str)
-
-        #     target_model = self._get_model_for_ns_index(nid.ns_index)
-        #     nid_str = nid.to_string()
-        #     return _fast_lookup(target_model, nid_str)
-
-        # # Any other ns
-        # target_model = self._get_model_for_ns_index(nid.ns_index)
-
-        # # Normalize to nodeid idx to 1 because that's how it's stored in target
-        # normalized_nid = NodeId(1, nid.id_type, nid.id)
-        # nid_str = normalized_nid.to_string()
-        # return _fast_lookup(target_model, nid_str)
+        return self.namespace_context.resolve_node(nid, self)
 
     def find_by_browse_name(self, browse_name: str | QualifiedName) -> list[Node]:
         #TODO Clean this up
