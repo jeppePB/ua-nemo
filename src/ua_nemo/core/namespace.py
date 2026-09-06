@@ -111,6 +111,21 @@ class Namespace:
         self._next_node_idx += 1
         return node
 
+    def _find_by_idx(self, idx: int) -> Node | None:
+            """ Finds a node by its minted internal idx. Returns None if it does not exist. """
+            if 0 <= idx < len(self.nodes_by_idx):
+                return self.nodes_by_idx[idx]
+            return None
+    
+    def _get_model_for_ns_index(self, ns_idx: int) -> Namespace:
+        ns = self._nsidx_model_cache.get(ns_idx, None)
+        if ns is not None:
+            return ns
+        ns_uri = self.get_namespace_by_index(ns_idx)
+        ns = self.namespace_context.get_model_by_uri(ns_uri)
+        self._nsidx_model_cache[ns_idx] = ns
+        return ns
+    
     @property
     def uri(self) -> str:
         return self._uri
@@ -201,12 +216,6 @@ class Namespace:
             if node.node_class in node_definitions.TYPE_CLASSES:
                 self.is_type_namespace = True
 
-    def _find_by_idx(self, idx: int) -> Node | None:
-        """ Finds a node by its minted internal idx. Returns None if it does not exist. """
-        if 0 <= idx < len(self.nodes_by_idx):
-            return self.nodes_by_idx[idx]
-        return None
-
     def add_alias(self, alias_name: str, nodeid_text: str) -> None:
         # nodeid_text can be "i=63", "ns=0;i=63", "ns=1;s=Thing", etc.
         if ";" in nodeid_text:  # expanded form
@@ -215,15 +224,6 @@ class Namespace:
             # Short form like "i=63", "s=MyId", etc. -> default to ns=0
             nid = NodeId.from_string(f"ns=0;{nodeid_text}")
         self.aliases[alias_name] = nid
-
-    def _get_model_for_ns_index(self, ns_idx: int) -> Namespace:
-        ns = self._nsidx_model_cache.get(ns_idx, None)
-        if ns is not None:
-            return ns
-        ns_uri = self.get_namespace_by_index(ns_idx)
-        ns = self.namespace_context.get_model_by_uri(ns_uri)
-        self._nsidx_model_cache[ns_idx] = ns
-        return ns
 
     def find_by_nodeid(self, node_id: str | NodeId) -> Node | None:
         """ Finds a node by its NodeId. Returns None if the node does not exist.
