@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from ua_nemo.core.node_id import NodeId
-from ua_nemo.types._protocols import NamespaceLike
+from ua_nemo.types._protocols import NamespaceLike, NodeLike
 
 
 class NamespaceContext:
@@ -41,6 +41,11 @@ class NamespaceContext:
         if uri not in target_model.namespace_array:
             target_model.namespace_array.append(uri)
         return target_model.namespace_array.index(uri)
+
+    def resolve_node(self, nid:NodeId, from_ns: NamespaceLike) -> NodeLike | None:
+        target_ns = from_ns.namespace_array[nid.ns_index]
+        if nid.ns_index > 1:
+            
 
     def remap_nodeid(self, nid: NodeId, from_model: NamespaceLike, to_model: NamespaceLike) -> NodeId:
         uri = from_model.namespace_array[nid.ns_index]

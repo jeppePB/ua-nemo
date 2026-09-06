@@ -51,7 +51,7 @@ class Namespace:
     is_ua_namespace: bool
 
     nodes_by_idx: list[Node]
-    nid_to_idx: dict[str, int]
+    nid_to_idx: dict[NodeId, int]
     nodes_by_browse_name: dict[QualifiedName, Node]
     child_index: dict[
         int, dict[
@@ -152,30 +152,33 @@ class Namespace:
             return
         self.namespace_array.append(ns_uri)
 
-    def index_child_edge(self, parent: Node, child: Node):
-        p = parent.minted_idx
-        q = child.browse_name
-        c = child.minted_idx
-        self.child_index.setdefault(p, {}).setdefault(q, []).append(c)
+    #! SLOP ZONE
+    #TODO Fix this function and add tests for it
+    # def index_child_edge(self, parent: Node, child: Node):
+    #     p = parent.minted_idx
+    #     q = child.browse_name
+    #     c = child.minted_idx
+    #     self.child_index.setdefault(p, {}).setdefault(q, []).append(c)
 
-    def child_by_qname(self, parent: Node, qname: QualifiedName, handle_multiple: str = "fail"):
-        """handle_multiple: strategy used when model has not been properly build and multiple
-        children have the same qualified name.
-        Options:
-            - fail: raises AmbiguousChildError
-            - ignore: returns a list of matching nodes"""
-        bucket = self.child_index.get(parent.minted_idx, {})
-        indices = bucket.get(qname, [])
-        if not indices:
-            raise KeyError(qname)
-        if len(indices) > 1:
-            #log warning
-            print(f"Warning: Multiple children found for {qname}. Make sure nodes have only a single child per qualified name.")
-            if handle_multiple == "ignore":
-                return [self.nodes_by_idx[idx] for idx in indices]
-            else:
-                raise AmbiguousChildError(qname)
-        return self.nodes_by_idx(indices[0])
+    #TODO Fix this function and add tests for it
+    # def child_by_qname(self, parent: Node, qname: QualifiedName, handle_multiple: str = "fail"):
+    #     """handle_multiple: strategy used when model has not been properly build and multiple
+    #     children have the same qualified name.
+    #     Options:
+    #         - fail: raises AmbiguousChildError
+    #         - ignore: returns a list of matching nodes"""
+    #     bucket = self.child_index.get(parent.minted_idx, {})
+    #     indices = bucket.get(qname, [])
+    #     if not indices:
+    #         raise KeyError(qname)
+    #     if len(indices) > 1:
+    #         #log warning
+    #         print(f"Warning: Multiple children found for {qname}. Make sure nodes have only a single child per qualified name.")
+    #         if handle_multiple == "ignore":
+    #             return [self.nodes_by_idx[idx] for idx in indices]
+    #         else:
+    #             raise AmbiguousChildError(qname)
+    #     return self.nodes_by_idx(indices[0])
 
     def get_namespace_by_index(self, ns_idx: int) -> str:
         return self.namespace_array[ns_idx]
@@ -186,7 +189,7 @@ class Namespace:
 
         # Store canonical mappings
         self.nodes_by_id[nid_str] = node
-        self.nid_to_idx[nid_str] = node.minted_idx
+        self.nid_to_idx[node.node_id] = node.minted_idx
 
         # Dense array
         self.nodes_by_idx.append(node)
@@ -223,39 +226,46 @@ class Namespace:
 
     def find_by_nodeid(self, node_id: str | NodeId) -> Node:
         # Fast path - ns is clearly local
-        if isinstance(node_id, str) and node_id.startswith("ns=1;"):
-            idx = self.nid_to_idx.get(node_id)
+        nid = node_id if isinstance(node_id, NodeId) else NodeId.from_string(node_id)
+
+        local_idx = 0 if self.is_ua_namespace else 1
+        if nid.ns_index == local_idx:
+            idx = self.nid_to_idx.get(nid)
             return None if idx is None else self.find_by_idx(idx)
 
-        nid = node_id if isinstance(node_id, NodeId) else NodeId.from_string(node_id)
-        ns = nid.ns_index
+        return self.namespace_context.resolve_node(node_id, self)
+        # if isinstance(node_id, str) and node_id.startswith("ns=1;"):
+        #     idx = self.nid_to_idx.get(node_id)
+        #     return None if idx is None else self.find_by_idx(idx)
 
-        def _fast_lookup(model: Namespace, nid_str: str) -> Node | None:
-            idx = model.nid_to_idx.get(nid_str)
-            return None if idx is None else model.find_by_idx(idx)
+        # nid = node_id if isinstance(node_id, NodeId) else NodeId.from_string(node_id)
 
-        # Local model, kept around just in case
-        if ns == 1:
-            nid_str = nid.to_string()
-            return _fast_lookup(self, nid_str)
+        # def _fast_lookup(model: Namespace, nid_str: str) -> Node | None:
+        #     idx = model.nid_to_idx.get(nid_str)
+        #     return None if idx is None else model.find_by_idx(idx)
 
-        # UA namespace
-        if ns == 0:
-            if self.is_ua_namespace:
-                nid_str = nid.to_string()
-                return _fast_lookup(self, nid_str)
+        # # Local model, kept around just in case
+        # if nid.ns_index == 1:
+        #     nid_str = nid.to_string()
+        #     return _fast_lookup(self, nid_str)
 
-            target_model = self._get_model_for_ns_index(ns)
-            nid_str = nid.to_string()
-            return _fast_lookup(target_model, nid_str)
+        # # UA namespace
+        # if nid.ns_index == 0:
+        #     if self.is_ua_namespace:
+        #         nid_str = nid.to_string()
+        #         return _fast_lookup(self, nid_str)
 
-        # Any other ns
-        target_model = self._get_model_for_ns_index(ns)
+        #     target_model = self._get_model_for_ns_index(nid.ns_index)
+        #     nid_str = nid.to_string()
+        #     return _fast_lookup(target_model, nid_str)
 
-        # Normalize to nodeid idx to 1 because that's how it's stored in target
-        normalized_nid = NodeId(1, nid.id_type, nid.id)
-        nid_str = normalized_nid.to_string()
-        return _fast_lookup(target_model, nid_str)
+        # # Any other ns
+        # target_model = self._get_model_for_ns_index(nid.ns_index)
+
+        # # Normalize to nodeid idx to 1 because that's how it's stored in target
+        # normalized_nid = NodeId(1, nid.id_type, nid.id)
+        # nid_str = normalized_nid.to_string()
+        # return _fast_lookup(target_model, nid_str)
 
     def find_by_browse_name(self, browse_name: str | QualifiedName) -> list[Node]:
         #TODO Clean this up
