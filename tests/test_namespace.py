@@ -8,7 +8,7 @@ from ua_nemo.core import NodeId, Node
 def test_create_namespace_defaults():
     ns = Namespace()
 
-    assert isinstance(ns.namespace_context, NamespaceContext)
+    assert isinstance(ns.ns_ctx, NamespaceContext)
     assert ns.name is None
     assert ns.uri is None
 
@@ -96,8 +96,8 @@ def test_add_node_indexes_by_id_and_browse_name():
 
     ns.add_node(node)
 
-    assert node.node_id.to_string() in ns.nodes_by_id
-    assert ns.nodes_by_id[node.node_id.to_string()] is node
+    assert node.node_id in ns.nid_to_idx
+    assert ns.find_by_nodeid(node.node_id) is node
     assert ns.find_by_browse_name("Foo") == [node]
 
 def test_add_node_sets_is_type_namespace_when_type_class_added():
@@ -197,16 +197,16 @@ def test_node_is_assigned_minted_idx():
     ns.uri = "urn:model1"
 
     node = Node("ns=1;i=1", "1:Foo", NodeClass.Object, ns)
-    assert node.minted_idx is None
+    assert node._local_idx is None
     ns.add_node(node)
-    assert node.minted_idx == 0
-    assert ns._next_node_idx == 1
+    assert node._local_idx == 0
+    assert ns._next_local_idx == 1
     
     node_two = Node("ns=1;i=100", "1:Foo", NodeClass.Object, ns)
-    assert node_two.minted_idx is None
+    assert node_two._local_idx is None
     ns.add_node(node_two)
-    assert node_two.minted_idx == 1
-    assert ns._next_node_idx == 2
+    assert node_two._local_idx == 1
+    assert ns._next_local_idx == 2
 
 def test_node_is_assigned_minted_idx_per_ns():
     ns = Namespace()
@@ -223,10 +223,10 @@ def test_node_is_assigned_minted_idx_per_ns():
     ns_2.add_node(node_3)
 
     # Index should only count up on a per-namespace basis
-    assert ns._next_node_idx == 1
-    assert ns_2._next_node_idx == 2
+    assert ns._next_local_idx == 1
+    assert ns_2._next_local_idx == 2
     # Node should be assigned correct index
-    assert node_3.minted_idx == 1
+    assert node_3._local_idx == 1
 
 def test_find_node_by_idx():
     ns = Namespace()

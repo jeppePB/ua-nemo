@@ -84,6 +84,6 @@ def fake_ref():
 
 @pytest.fixture(autouse=True)
 def reset_default_namespace_context():
-    Namespace._default_namespace_context = None
+    Namespace._default_ctx = None
     yield
-    Namespace._default_namespace_context = None
+    Namespace._default_ctx = None

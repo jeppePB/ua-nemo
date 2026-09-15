@@ -53,7 +53,7 @@ class ModelBuilderEngine:
         except:
             #* Check if this is an alias
             ref_nodeid = typelib_model.resolve(row.reference_type)
-        remapped_nodeid = target_model.namespace_context.remap_nodeid(ref_nodeid, typelib_model, target_model)
+        remapped_nodeid = target_model.ns_ctx.remap_nodeid(ref_nodeid, typelib_model, target_model)
         return remapped_nodeid
     
     def get_type_instantiator(self, typelib_name : str, target_model : Namespace) -> TypeInstantiator:

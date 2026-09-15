@@ -6,13 +6,22 @@ from ua_nemo.types._protocols import NamespaceLike, NodeLike
 
 class NamespaceContext:
     #TODO Needs a cleanup, fairly sure this contains duplicate functionality
+    _next_global_idx: int
+    nodes_by_global_idx: list[NodeLike]
     namespace_dict: dict[str, NamespaceLike]
     namespace_dict_uri: dict[str, NamespaceLike]
-
+    
     def __init__(self):
+        self._next_global_idx = 0
         self.namespace_dict = {}
         self.namespace_dict_uri = {}
+        self.nodes_by_global_idx = []
 
+    def _mint_global_idx(self, node: NodeLike) -> int:
+        node._global_idx = self._next_global_idx 
+        self._next_global_idx += 1
+        self.nodes_by_global_idx.append(node)
+    
     #? Would I like to automatically load the ua nodeset here?
     def register_model(self, model: NamespaceLike) -> None:
         self.namespace_dict[model.name] = model
@@ -27,7 +36,7 @@ class NamespaceContext:
                 model.add_namespace(ua_namespace.uri)
 
         model.add_namespace(model.uri)
-
+    
     def get_model(self, name: str = None, uri: str = None) -> NamespaceLike | None:
         #TODO Refactor this
         if name == uri:
@@ -72,3 +81,7 @@ class NamespaceContext:
 
     def empty(self) -> bool:
         return len(self.namespace_dict) == 0
+
+#TODO Add tests for global nid
+#TODO Add tests for resolve_node
+#TODO Add global reference list of tuples (int, int, int)

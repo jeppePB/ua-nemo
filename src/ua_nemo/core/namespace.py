@@ -39,26 +39,24 @@ def derive_namespace_name(uri: str) -> str:
 class Namespace:
     #TODO Add ".from_nodeset" function to load nodemodels from files
 
-    _next_node_idx: int
-    _default_namespace_context: NamespaceContext = None
+    _next_local_idx: int
+    _default_ctx: NamespaceContext = None
     _uri: str
-    _nsidx_model_cache: dict[int, Namespace]
 
     namespace_array: list
-    namespace_context: NamespaceContext = None
+    ns_ctx: NamespaceContext = None
     aliases: dict[str, NodeId]
     is_type_namespace: bool
     is_ua_namespace: bool
 
-    nodes_by_idx: list[Node]
     nid_to_idx: dict[NodeId, int]
+    nodes: list[Node]
     nodes_by_browse_name: dict[QualifiedName, Node]
     child_index: dict[
         int, dict[
             QualifiedName, list[int]]]
 
     name: str
-    nodes_by_id: dict[str, Node]
 
     metadata: NamespaceMetadata
     dependencies: list[NamespaceMetadata]
@@ -66,30 +64,28 @@ class Namespace:
     def __init__(self, namespace_context: NamespaceContext = None):
         self.name = None
         self._uri = None
-        self._next_node_idx = 0
-        self._nsidx_model_cache = {}
+        self._next_local_idx = 0
 
         self.is_type_namespace = False
         self.is_ua_namespace = False
 
         # Canonical mappings
-        self.nodes_by_id = {}
-        self.nodes_by_browse_name = {}
         self.nid_to_idx = {}
+        self.nodes_by_browse_name = {}
 
         # Dense array lookup
-        self.nodes_by_idx = []
+        self.nodes = []
 
         self.namespace_array = []
         self.metadata = None
         self.dependencies = []
 
         if namespace_context is None:
-            if Namespace._default_namespace_context is None:
-                Namespace._default_namespace_context = NamespaceContext()
-            self.namespace_context = Namespace._default_namespace_context
+            if Namespace._default_ctx is None:
+                Namespace._default_ctx = NamespaceContext()
+            self.ns_ctx = Namespace._default_ctx
         else:
-            self.namespace_context = namespace_context
+            self.ns_ctx = namespace_context
 
         self.aliases = {}
 
@@ -99,32 +95,23 @@ class Namespace:
                 f"name={self.name!r}, "
                 f"uri={self._uri!r}, "
                 f"namespaces={len(self.namespace_array)}, "
-                f"nodes={len(self.nodes_by_id)})")
+                f"nodes={len(self.nodes)})")
 
     def __str__(self) -> str:
         ns_info = ", ".join(self.namespace_array) if self.namespace_array else "[]"
         return (f"NodeModel '{self.name}' "
-                f"(URI={self._uri}, namespaces={ns_info}, nodes={len(self.nodes_by_id)})")
+                f"(URI={self._uri}, namespaces={ns_info}, nodes={len(self.nodes)})")
 
-    def __assign_node_idx(self, node: Node) -> Node:
-        node.minted_idx = self._next_node_idx
-        self._next_node_idx += 1
-        return node
+    def _mint_local_idx(self, node: Node) -> int:
+        node._local_idx = self._next_local_idx
+        self._next_local_idx += 1
+        self.nodes.append(node)
 
     def _find_by_idx(self, idx: int) -> Node | None:
-            """ Finds a node by its minted internal idx. Returns None if it does not exist. """
-            if 0 <= idx < len(self.nodes_by_idx):
-                return self.nodes_by_idx[idx]
-            return None
-    
-    def _get_model_for_ns_index(self, ns_idx: int) -> Namespace:
-        ns = self._nsidx_model_cache.get(ns_idx, None)
-        if ns is not None:
-            return ns
-        ns_uri = self.get_namespace_by_index(ns_idx)
-        ns = self.namespace_context.get_model_by_uri(ns_uri)
-        self._nsidx_model_cache[ns_idx] = ns
-        return ns
+        """ Finds a node by its minted internal idx. Returns None if it does not exist. """
+        if 0 <= idx < len(self.nodes):
+            return self.nodes[idx]
+        return None
     
     @property
     def uri(self) -> str:
@@ -145,7 +132,7 @@ class Namespace:
         self._uri = uri
         self.is_ua_namespace = self.name == "UA"
         #TODO Remove separate handling of namespaces in model and global ns context
-        self.namespace_context.register_model(self)
+        self.ns_ctx.register_model(self)
 
     def resolve(self, nodeid_or_alias: str | NodeId) -> NodeId:
         # Fast path: a real NodeId string?
@@ -199,15 +186,10 @@ class Namespace:
         return self.namespace_array[ns_idx]
 
     def add_node(self, node: Node) -> None:
-        node = self.__assign_node_idx(node)
-        nid_str = node.node_id.to_string()
+        self._mint_local_idx(node)
+        self.ns_ctx._mint_global_idx(node)
 
-        # Store canonical mappings
-        self.nodes_by_id[nid_str] = node
-        self.nid_to_idx[node.node_id] = node.minted_idx
-
-        # Dense array
-        self.nodes_by_idx.append(node)
+        self.nid_to_idx[node.node_id] = node._local_idx
 
         # Browse name index
         self.nodes_by_browse_name.setdefault(node.browse_name, []).append(node)
@@ -233,9 +215,9 @@ class Namespace:
         local_idx = 0 if self.is_ua_namespace else 1
         if nid.ns_index == local_idx:
             idx = self.nid_to_idx.get(nid)
-            return self._find_by_idx(idx)
+            return None if idx is None else self._find_by_idx(idx)
 
-        return self.namespace_context.resolve_node(nid, self)
+        return self.ns_ctx.resolve_node(nid, self)
 
     def find_by_browse_name(self, browse_name: str | QualifiedName) -> list[Node]:
         #TODO Clean this up
@@ -245,3 +227,5 @@ class Namespace:
             else:
                 browse_name = QualifiedName.from_string(browse_name, 1)
         return self.nodes_by_browse_name.get(browse_name, [])
+
+#TODO Write new tests

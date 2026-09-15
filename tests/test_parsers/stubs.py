@@ -73,7 +73,7 @@ class NamespaceStub:
         self.name = "MODEL"
         self.ns_info = {}
         self.aliases: dict[str, NodeIdStub] = {}
-        self.nodes_by_id: dict[str, NodeStub] = {}
+        self.nodes: dict[str, NodeStub] = {}
         self.namespace_context = type("Ctx", (), {"namespace_dict_uri": self._loaded_model_uris})()
         self.dependencies: list[NamespaceMetadata] = []
 
@@ -111,10 +111,10 @@ class NamespaceStub:
             self._loaded_model_uris.add(uri)
 
     def add_node(self, node: NodeStub):
-        self.nodes_by_id[node.node_id.to_string()] = node
+        self.nodes[node.node_id.to_string()] = node
 
     def find_by_nodeid(self, nodeid: NodeIdStub):
-        return self.nodes_by_id.get(nodeid.to_string())
+        return self.nodes.get(nodeid.to_string())
 
 
 def resolve_node_class_stub(tag: str):

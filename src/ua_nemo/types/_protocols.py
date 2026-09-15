@@ -13,6 +13,8 @@ class NamespaceLike(Protocol):
     def find_by_nodeid(self, nid): ...
     def child_by_qname(self, parent, qname, handle_multiple: str = "fail"): ...
 class NodeLike(Protocol):
+    _local_idx: int
+    _global_idx: int
     namespace: NamespaceLike | None
     display_name: str
     base_type: NodeLike

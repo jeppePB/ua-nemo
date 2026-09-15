@@ -97,7 +97,7 @@ def test_load_ignores_missing_required_models_when_configured(tmp_path, caplog):
 
     ns = next(iter(res.values()))
     assert ns.uri == "urn:test:model"
-    assert "i=1001" in ns.nodes_by_id
+    assert "i=1001" in ns.nodes
 
 
 def test_alias_resolution_applied_to_reference_type_and_target(tmp_path):
@@ -127,7 +127,7 @@ def test_alias_resolution_applied_to_reference_type_and_target(tmp_path):
     res = loader.load(xml_path)
 
     ns = next(iter(res.values()))
-    node = ns.nodes_by_id["i=9001"]
+    node = ns.nodes["i=9001"]
     assert len(node.references) == 1
 
     r = node.references[0]
@@ -158,7 +158,7 @@ def test_classify_reference_base_hierarchical_sets_base_type_to_self(tmp_path):
     res = loader.load(xml_path)
 
     ns = next(iter(res.values()))
-    node = ns.nodes_by_id[HIERARCHICAL_UA_REFS[0]]
+    node = ns.nodes[HIERARCHICAL_UA_REFS[0]]
     assert node.base_type is not None
     assert node.base_type.to_string() == HIERARCHICAL_UA_REFS[0]
 
@@ -190,7 +190,7 @@ def test_classify_child_of_base_hierarchical_sets_base_type_to_own_nodeid(tmp_pa
     res = loader.load(xml_path)
 
     ns = next(iter(res.values()))
-    child = ns.nodes_by_id["i=1000"]
+    child = ns.nodes["i=1000"]
     assert child.base_type is not None
     assert child.base_type.to_string() == "i=1000"
 

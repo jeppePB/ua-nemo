@@ -16,7 +16,7 @@ class TypeInstantiator:
     def __init__(self, typelib_model:Namespace, target_model:Namespace):
         self.typelib_model = typelib_model
         self.target_model = target_model
-        self.ns_context = target_model.namespace_context
+        self.ns_context = target_model.ns_ctx
 
     def instantiate(self, typename: str, instance_nodeid: str, instance_browsename: str, include_optional: bool = False, **kwargs) -> str:
         # Find typedefinition

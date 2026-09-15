@@ -9,7 +9,8 @@ HIERARCHICAL_REF = NodeId.from_string("i=40")
 
 class Node:
     __slots__ = (
-        "minted_idx",
+        "_local_idx",
+        "_global_idx",
         "node_id", 
         "browse_name", 
         "node_class", 
@@ -20,7 +21,8 @@ class Node:
         "base_type",
     ) 
 
-    minted_idx: int
+    _local_idx: int
+    _global_idx: int
     namespace: NamespaceLike
     node_id: NodeId
     browse_name: QualifiedName
@@ -51,7 +53,8 @@ class Node:
             subnodes: dict=None,
             ):
         
-        self.minted_idx = None
+        self._local_idx = None
+        self._global_idx = None
         if not isinstance(node_id, NodeId):
             node_id = NodeId.from_string(node_id)
         

@@ -246,7 +246,7 @@ class NodesetLoader:
     def _check_missing_requirements(self, model: Namespace, xml_path: Path, strategy: str):
         missing = [
             dep for dep in model.dependencies
-            if dep.is_mandatory and dep.uri not in model.namespace_context.namespace_dict_uri
+            if dep.is_mandatory and dep.uri not in model.ns_ctx.namespace_dict_uri
         ]
 
         if missing:

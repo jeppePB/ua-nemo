@@ -31,7 +31,7 @@ def dump_model_to_xml(model:Namespace, file_path=None):
     #TODO add models
 
     # Nodes
-    for node in model.nodes_by_id.values():
+    for node in model.nodes:
         #TODO Make this more memory efficient. Maybe don't create the full model in memory before dumping?
         tag = NODE_CLASSES[node.node_class]
         elem = ET.SubElement(root, tag)
@@ -101,7 +101,7 @@ def dump_model_to_xml_streaming(model:Namespace, file_path:Path):
                 xf.write("\n")
 
             # Nodes
-            for node in model.nodes_by_id.values():
+            for node in model.nodes:
                 tag = NODE_CLASSES[node.node_class]
                 node_attrs = {
                     "NodeId": node.node_id.to_string(),

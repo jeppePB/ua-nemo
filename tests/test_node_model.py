@@ -17,7 +17,7 @@ def test_default_namespace_context():
     model_two = Namespace()
     model_two.uri = "http://model_two.org"
 
-    assert model_one.namespace_context is model_two.namespace_context
+    assert model_one.ns_ctx is model_two.ns_ctx
     assert model_one.namespace_array != model_two.namespace_array
     
 def test_namespace_array():

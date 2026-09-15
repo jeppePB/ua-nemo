@@ -87,7 +87,7 @@ def create_nodes(model:Namespace, objects:pd.DataFrame, relations:pd.DataFrame):
                 parts = target_node.split(".")
                 typelib = engine.get_typelibrary(parts[0])
                 target = typelib.find_by_browse_name(parts[1])[0]
-                context = model.namespace_context
+                context = model.ns_ctx
                 target_node = context.remap_nodeid(target.node_id, typelib, model)
             instantiated_node.add_reference(reference_type=ref_type.to_string(), target_nodeid=target_node, is_forward=normalize_bool(row.IsForward))
 
