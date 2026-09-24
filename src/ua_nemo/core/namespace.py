@@ -198,14 +198,10 @@ class Namespace:
             if node.node_class in node_definitions.TYPE_CLASSES:
                 self.is_type_namespace = True
 
-    def add_alias(self, alias_name: str, nodeid_text: str) -> None:
-        # nodeid_text can be "i=63", "ns=0;i=63", "ns=1;s=Thing", etc.
-        if ";" in nodeid_text:  # expanded form
-            nid = NodeId.from_string(nodeid_text)
-        else:
-            # Short form like "i=63", "s=MyId", etc. -> default to ns=0
-            nid = NodeId.from_string(f"ns=0;{nodeid_text}")
-        self.aliases[alias_name] = nid
+    def add_alias(self, alias: str, nid: str | NodeId) -> None:
+        if isinstance(nid, str):
+            nid = NodeId.from_string(nid)
+        self.aliases[alias] = nid
 
     def find_by_nodeid(self, node_id: str | NodeId) -> Node | None:
         """ Finds a node by its NodeId. Returns None if the node does not exist.
