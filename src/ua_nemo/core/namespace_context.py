@@ -22,6 +22,11 @@ class NamespaceContext:
         self._next_global_idx += 1
         self.nodes_by_global_idx.append(node)
     
+    def _get_ns_idx_relative_to_target(self, target_model: NamespaceLike, uri: str) -> int:
+        if uri not in target_model.namespace_array:
+            target_model.namespace_array.append(uri)
+        return target_model.namespace_array.index(uri)
+    
     #? Would I like to automatically load the ua nodeset here?
     def register_model(self, model: NamespaceLike) -> None:
         self.namespace_dict[model.name] = model
@@ -48,11 +53,6 @@ class NamespaceContext:
     def get_model_by_uri(self, model_uri: str) -> NamespaceLike:
         return self.namespace_dict_uri[model_uri]
 
-    def get_or_add_namespace(self, target_model: NamespaceLike, uri: str) -> int:
-        if uri not in target_model.namespace_array:
-            target_model.namespace_array.append(uri)
-        return target_model.namespace_array.index(uri)
-
     def resolve_node(self, nid:NodeId, from_ns: NamespaceLike) -> NodeLike | None:
         """ Finds a node across namespaces. If the target namespace uri does not exist in the namespace context,
         returns None.
@@ -73,7 +73,7 @@ class NamespaceContext:
 
     def remap_nodeid(self, nid: NodeId, from_model: NamespaceLike, to_model: NamespaceLike) -> NodeId:
         uri = from_model.namespace_array[nid.ns_index]
-        new_index = self.get_or_add_namespace(to_model, uri)
+        new_index = self._get_ns_idx_relative_to_target(to_model, uri)
         return NodeId(
             ns_index=new_index,
             id_type=nid.id_type,
