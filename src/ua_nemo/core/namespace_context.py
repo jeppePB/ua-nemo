@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import logging
+
 from ua_nemo.core.node_id import NodeId
 from ua_nemo.types._protocols import NamespaceLike, NodeLike
 
-
+logger = logging.getLogger(__name__)
 class NamespaceContext:
     #TODO Needs a cleanup, fairly sure this contains duplicate functionality
     _next_global_idx: int
@@ -35,8 +37,7 @@ class NamespaceContext:
         if not model.name == "UA":
             ua_namespace = self.namespace_dict.get("UA")
             if ua_namespace is None:
-                #TODO Make a proper warning
-                print(f"UA namespace has not been loaded. Model {model.name} has an empty namespace on index 0 of its namespace array.")
+                logger.warning("UA namespace has not been loaded. Model %s has an empty namespace on index 0 of its namespace array.", model.uri)
             else:
                 model.add_namespace(ua_namespace.uri)
 
@@ -44,7 +45,7 @@ class NamespaceContext:
     
     def get_model(self, name: str = None, uri: str = None) -> NamespaceLike | None:
         #TODO Refactor this
-        if name == uri:
+        if name is None and uri is None:
             raise ValueError("One of name or uri is required")
         if name:
             return self.namespace_dict.get(name)
