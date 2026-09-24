@@ -210,6 +210,9 @@ class Namespace:
     def find_by_nodeid(self, node_id: str | NodeId) -> Node | None:
         """ Finds a node by its NodeId. Returns None if the node does not exist.
         """
+        if node_id is None:
+            return None
+        
         nid = node_id if isinstance(node_id, NodeId) else NodeId.from_string(node_id)
 
         local_idx = 0 if self.is_ua_namespace else 1
