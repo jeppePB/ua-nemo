@@ -1,3 +1,5 @@
+import logging
+
 from ua_nemo.core import NodeId, Reference
 from ua_nemo.types import QualifiedName
 from ua_nemo.types._protocols import NamespaceLike
@@ -7,6 +9,7 @@ import ua_nemo.node_definitions as nd
 #TODO Fix this bandaid
 HIERARCHICAL_REF = NodeId.from_string("i=40")
 
+logger = logging.getLogger(__name__)
 class Node:
     __slots__ = (
         "_local_idx",
@@ -116,10 +119,14 @@ class Node:
         return f"{namespace_uri}#{nid_id}"
 
     @property
-    def type_uri(self) -> str:
+    def type_uri(self) -> str | None:
         type_node = self.namespace.find_by_nodeid(self.type_definition)
-        if not type_node and self.is_abstract:
-            type_node = self
+        if not type_node:
+            if self.is_abstract:
+                type_node = self
+            else:
+                logger.warning("Could not find type node for node %s", self.node_id)
+                return None
         type_namespace = type_node.namespace.uri
         type_browsename = type_node.browse_name.name
         return f"{type_namespace}#{type_browsename}"
