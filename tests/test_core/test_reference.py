@@ -5,8 +5,8 @@ from ua_nemo.core import Reference, Node, NodeId
 from ua_nemo.node_definitions import NodeClass
 
 @pytest.fixture(autouse=True, scope="function")
-def add_alias(ns):
-    ns.register_alias("Organizes", NodeId.from_string("i=40"))
+def add_organizes_alias(ns):
+    ns.add_alias("Organizes", NodeId.from_string("i=40"))
 
 def test_init_converts_string_to_nodeid(ns):
     src = Node("i=1", "test", NodeClass.Object, ns)
@@ -120,7 +120,7 @@ def test_is_hierarchical_true_when_base_type_is_not_none(ns):
     ref_node = Node("i=40", "Organizes", NodeClass.ReferenceType, ns)
     ref_node.base_type = True
 
-    ns.register(ref_node.node_id, node=ref_node)
+    ns.add_node(ref_node.node_id, node=ref_node)
     
     src = Node("i=1", "test", NodeClass.Object, namespace=ns)
     
