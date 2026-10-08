@@ -120,7 +120,7 @@ def test_is_hierarchical_true_when_base_type_is_not_none(ns):
     ref_node = Node("i=40", "Organizes", NodeClass.ReferenceType, ns)
     ref_node.base_type = True
 
-    ns.add_node(ref_node.node_id, node=ref_node)
+    ns.add_node(node=ref_node)
     
     src = Node("i=1", "test", NodeClass.Object, namespace=ns)
     
@@ -132,7 +132,6 @@ def test_is_hierarchical_false_when_base_type_is_none(ns):
     ref_node = Node("i=40", "Organizes", NodeClass.ReferenceType, ns)
     ref_node.base_type = None
     
-    ns.register(ref_node.node_id, node=ref_node)
     
     src = Node("i=1", "test", NodeClass.Object, namespace=ns)
     
@@ -146,7 +145,6 @@ def test_base_type_returns_display_name_from_base_type_node(ns):
     ref_node.base_type = True
 
     # ns.register(base_type.node_id, node=base_type)
-    ns.register(ref_node.node_id, node=ref_node)
     
     src = Node("i=1", "test", NodeClass.Object, namespace=ns)
     
