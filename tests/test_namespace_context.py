@@ -47,8 +47,8 @@ def test_empty_false_after_registering_a_model(ctx, ua_namespace):
 # ---- register_model ----
 
 def test_register_model_indexes_by_name_and_uri(ctx, ua_namespace):
-    assert ctx.namespace_dict["UA"] is ua_namespace
-    assert ctx.namespace_dict_uri[UA_URI] is ua_namespace
+    assert ctx.get_namespace_by_name("UA") is ua_namespace
+    assert ctx.get_namespace_by_uri(UA_URI) is ua_namespace
 
 
 def test_ua_namespace_only_adds_itself_to_its_own_array(ua_namespace):
@@ -94,14 +94,13 @@ def test_get_model_returns_none_for_unknown_uri(ctx, ua_namespace):
 
 
 def test_get_model_by_uri_success(ctx, ua_namespace):
-    assert ctx.get_model_by_uri(UA_URI) is ua_namespace
+    assert ctx.get_namespace_by_uri(UA_URI) is ua_namespace
 
 
-def test_get_model_by_uri_raises_for_unknown_uri(ctx):
+def test_get_model_by_uri_returns_none_for_unknown_uri(ctx):
     # Note: unlike get_model(uri=...), this indexes directly and raises rather than
     # returning None -- an existing inconsistency, tested here as current behavior.
-    with pytest.raises(KeyError):
-        ctx.get_model_by_uri("urn:nope")
+    assert ctx.get_namespace_by_uri("urn:nope") is None
 
 
 # ---- _get_ns_idx_relative_to_target ----

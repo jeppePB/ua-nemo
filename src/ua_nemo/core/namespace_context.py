@@ -8,15 +8,18 @@ from ua_nemo.types._protocols import NamespaceLike, NodeLike
 logger = logging.getLogger(__name__)
 class NamespaceContext:
     #TODO Needs a cleanup, fairly sure this contains duplicate functionality
+
     _next_global_idx: int
     nodes_by_global_idx: list[NodeLike]
-    namespace_dict: dict[str, NamespaceLike]
-    namespace_dict_uri: dict[str, NamespaceLike]
+    namespaces: list[NamespaceLike]
+    _name_to_ns: dict[str, NamespaceLike]
+    _uri_to_ns: dict[str, NamespaceLike]
     
     def __init__(self):
         self._next_global_idx = 0
-        self.namespace_dict = {}
-        self.namespace_dict_uri = {}
+        self.namespaces = []
+        self._name_to_ns = {}
+        self._uri_to_ns = {}
         self.nodes_by_global_idx = []
 
     def _mint_global_idx(self, node: NodeLike) -> int:
@@ -30,36 +33,47 @@ class NamespaceContext:
         return target_model.namespace_array.index(uri)
     
     #? Would I like to automatically load the ua nodeset here?
-    def register_model(self, model: NamespaceLike) -> None:
-        self.namespace_dict[model.name] = model
-        self.namespace_dict_uri[model.uri] = model
+    def register_model(self, ns: NamespaceLike) -> None:
+        last_idx = len(self.namespaces)
+        self.namespaces.append(ns)
+        self._name_to_ns[ns.name] = last_idx
+        self._uri_to_ns[ns.uri] = last_idx
 
-        if not model.name == "UA":
-            ua_namespace = self.namespace_dict.get("UA")
+        if not ns.name == "UA":
+            ua_namespace = self.get_namespace_by_name("UA")
             if ua_namespace is None:
-                logger.warning("UA namespace has not been loaded. Model %s has an empty namespace on index 0 of its namespace array.", model.uri)
+                logger.warning("UA namespace has not been loaded. Model %s has an empty namespace on index 0 of its namespace array.", ns.uri)
             else:
-                model.add_namespace(ua_namespace.uri)
+                ns.add_namespace(ua_namespace.uri)
 
-        model.add_namespace(model.uri)
+        ns.add_namespace(ns.uri) #TODO this should be handled by the ns itself
     
     def get_model(self, name: str = None, uri: str = None) -> NamespaceLike | None:
-        #TODO Refactor this
+        #! DEPRECATED
         if name is None and uri is None:
             raise ValueError("One of name or uri is required")
         if name:
-            return self.namespace_dict.get(name)
-        return self.namespace_dict_uri.get(uri)
+            return self.get_namespace_by_name(name)
+        return self.get_namespace_by_uri(uri)
 
-    def get_model_by_uri(self, model_uri: str) -> NamespaceLike:
-        return self.namespace_dict_uri[model_uri]
+    def get_namespace_by_name(self, model_name: str) -> NamespaceLike:
+        idx = self._name_to_ns.get(model_name)
+        if idx is None:
+            return None
+        return self.namespaces[idx]
+    
+    def get_namespace_by_uri(self, model_uri: str) -> NamespaceLike:
+        idx = self._uri_to_ns.get(model_uri)
+        if idx is None:
+            return None
+        return self.namespaces[idx]
 
     def resolve_node(self, nid:NodeId, from_ns: NamespaceLike) -> NodeLike | None:
         """ Finds a node across namespaces. If the target namespace uri does not exist in the namespace context,
         returns None.
         """
         # This function assumes that searches for local nodes never reach the namespace-context level.
-        target_ns = self.namespace_dict_uri.get(
+        target_ns = self.get_namespace_by_uri(
             from_ns.namespace_array[nid.ns_index])
 
         if target_ns is None:
@@ -81,7 +95,7 @@ class NamespaceContext:
             id=nid.id)
 
     def empty(self) -> bool:
-        return len(self.namespace_dict) == 0
+        return len(self._name_to_ns) == 0
 
 #TODO Add tests for global nid
 #TODO Add tests for resolve_node
