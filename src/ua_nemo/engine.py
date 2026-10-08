@@ -5,6 +5,11 @@ from ua_nemo.type_instantiator import TypeInstantiator
 from ua_nemo.parsers import NodesetLoader
 from ua_nemo.types import QualifiedName
 
+"""
+
+THIS MODULE IS DEPRECATED AND WILL BE REMOVED
+
+"""
 class ModelBuilderEngine:
     
     typelibraries : dict[str, Namespace]
