@@ -1,6 +1,8 @@
 from __future__ import annotations
 from typing import Protocol
 
+from ua_nemo.core.node_id import NodeId
+
 
 class NamespaceLike(Protocol):
     name: str
@@ -9,8 +11,8 @@ class NamespaceLike(Protocol):
     namespace_array: list
 
     def add_namespace(self, ns_uri: str) -> None: ...
-    def resolve(self, x): ...
-    def find_by_nodeid(self, nid): ...
+    def resolve(self, nid_or_alias: str | NodeId) -> NodeId: ...
+    def find_by_nodeid(self, nid: NodeId) -> NodeLike | None: ...
     def child_by_qname(self, parent, qname, handle_multiple: str = "fail"): ...
 class NodeLike(Protocol):
     _local_idx: int

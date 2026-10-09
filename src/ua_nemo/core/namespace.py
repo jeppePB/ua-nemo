@@ -203,8 +203,9 @@ class Namespace:
             nid = NodeId.from_string(nid)
         self.aliases[alias] = nid
 
-    def find_by_nodeid(self, node_id: str | NodeId) -> Node | None:
+    def find_by_nodeid(self, node_id: str | NodeId | None) -> Node | None:
         """ Finds a node by its NodeId. Returns None if the node does not exist.
+        #TODO Due to the way it is being used internally in ua-nemo, a None node-id is currently allowed as argument. Should probably not allow this.
         """
         if node_id is None:
             return None

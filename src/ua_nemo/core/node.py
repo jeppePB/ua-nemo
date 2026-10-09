@@ -24,27 +24,16 @@ class Node:
         "base_type",
     ) 
 
-    _local_idx: int
-    _global_idx: int
-    namespace: NamespaceLike
-    node_id: NodeId
-    browse_name: QualifiedName
-    node_class: nd.NodeClass
-    references:list[Reference]
-    attributes:dict
-    subnodes:dict
-    base_type:NodeId
-
-    display_name: str
-    description: str
-    type_definition: NodeId | None
-
-    is_abstract : bool
-    is_object : bool
-    is_variable : bool
-
-    node_uri : str
-    type_uri : str
+    _local_idx:     int | None
+    _global_idx:    int | None
+    namespace:      NamespaceLike
+    node_id:        NodeId
+    browse_name:    QualifiedName
+    node_class:     nd.NodeClass
+    references:     list[Reference]
+    attributes:     dict
+    subnodes:       dict
+    base_type:      NodeId | None
     
     def __init__(
             self, 
@@ -52,9 +41,9 @@ class Node:
             browse_name: str|QualifiedName, 
             node_class: nd.NodeClass, 
             namespace: NamespaceLike,
-            attributes: dict=None, 
-            subnodes: dict=None,
-            ):
+            attributes: dict={}, 
+            subnodes: dict={},
+        ):
         
         self._local_idx = None
         self._global_idx = None
@@ -121,7 +110,7 @@ class Node:
     @property
     def type_uri(self) -> str | None:
         type_node = self.namespace.find_by_nodeid(self.type_definition)
-        if not type_node:
+        if type_node is None:
             if self.is_abstract:
                 type_node = self
             else:
@@ -132,7 +121,7 @@ class Node:
         return f"{type_namespace}#{type_browsename}"
     
     @property
-    def type_definition(self) -> NodeId:
+    def type_definition(self) -> NodeId | None:
         for ref in self.references:
             if ref.reference_type == TYPEDEF_REF:
                 return ref.target_nodeid
