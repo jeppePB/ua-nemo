@@ -34,6 +34,32 @@ def test_init_leaves_alias_as_is_if_no_namespace(ns):
     assert r.is_forward is True
     assert r.source is src
 
+def test_init_keeps_nodeid_reference_type_if_no_namespace():
+    src = Node("i=1", "1:test", NodeClass.Object, None)
+    nid = NodeId.from_string("i=40")
+    r = Reference(reference_type=nid, target_nodeid="ns=1;i=123", is_forward=True, source=src)
+
+    assert r.reference_type is nid
+
+def test_add_reference_with_alias_on_detached_node_keeps_alias():
+    src = Node("i=1", "1:test", NodeClass.Object, None)
+    src.add_reference("Organizes", "ns=1;i=2")
+
+    assert src.references[0].reference_type == "Organizes"
+
+def test_reference_type_stays_raw_if_alias_is_unresolvable(ns):
+    src = Node("i=1", "1:test", NodeClass.Object, ns)
+    r = Reference(reference_type="NotAnAlias", target_nodeid="ns=1;i=123", is_forward=True, source=src)
+
+    assert r.reference_type == "NotAnAlias"
+
+def test_get_base_type_node_returns_none_if_reference_type_unresolvable(ns):
+    src = Node("i=1", "1:test", NodeClass.Object, ns)
+    r = Reference(reference_type="NotAnAlias", target_nodeid="ns=1;i=123", is_forward=True, source=src)
+
+    assert r.get_base_type_node() is None
+    assert r.is_hierarchical is False
+
 def test_init_accepts_target_nodeid_as_nodeid_without_conversion(ns):
     src = Node("i=1", "test", NodeClass.Object, namespace=ns)
     nid = NodeId.from_string("ns=2;s=SomeId")
@@ -116,11 +142,16 @@ def test_get_base_type_returns_none_if_namespace_if_none():
     assert r.get_base_type_node() is None
 
 
-def test_is_hierarchical_true_when_base_type_is_not_none(ns):
-    ref_node = Node("i=40", "Organizes", NodeClass.ReferenceType, ns)
-    ref_node.base_type = True
+def _add_organizes_ref_type_node(ns, base_type):
+    # Local id: a ns=0 id can't be found in a non-UA namespace when UA isn't loaded.
+    ns.add_alias("Organizes", "ns=1;i=200")
+    ref_node = Node("ns=1;i=200", "1:Organizes", NodeClass.ReferenceType, ns)
+    ref_node.base_type = base_type
+    ns.add_node(ref_node)
+    return ref_node
 
-    ns.add_node(node=ref_node)
+def test_is_hierarchical_true_when_base_type_is_not_none(ns):
+    _add_organizes_ref_type_node(ns, base_type=NodeId.from_string("i=33"))
     
     src = Node("i=1", "test", NodeClass.Object, namespace=ns)
     
@@ -129,8 +160,7 @@ def test_is_hierarchical_true_when_base_type_is_not_none(ns):
     assert r.is_hierarchical is True
 
 def test_is_hierarchical_false_when_base_type_is_none(ns):
-    ref_node = Node("i=40", "Organizes", NodeClass.ReferenceType, ns)
-    ref_node.base_type = None
+    _add_organizes_ref_type_node(ns, base_type=None)
     
     
     src = Node("i=1", "test", NodeClass.Object, namespace=ns)
@@ -141,10 +171,7 @@ def test_is_hierarchical_false_when_base_type_is_none(ns):
 
 
 def test_base_type_returns_display_name_from_base_type_node(ns):
-    ref_node = Node("i=40", "Organizes", NodeClass.ReferenceType, ns)
-    ref_node.base_type = True
-
-    # ns.register(base_type.node_id, node=base_type)
+    ref_node = _add_organizes_ref_type_node(ns, base_type=NodeId.from_string("i=33"))
     
     src = Node("i=1", "test", NodeClass.Object, namespace=ns)
     
