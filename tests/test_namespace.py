@@ -1,5 +1,6 @@
 import pytest
 import logging
+from unittest.mock import MagicMock
 
 from ua_nemo.core import Namespace, NamespaceContext
 from ua_nemo.node_definitions import NodeClass
@@ -236,6 +237,42 @@ def test_find_node_by_idx():
     ns.add_node(node)
 
     assert ns._find_by_idx(0) == node
+
+def test_add_node_sets_namespace_on_detached_node():
+    ns = Namespace()
+    ns.uri = "urn:model1"
+
+    node = Node("ns=1;i=1", "1:Foo", NodeClass.Object, None)
+    ns.add_node(node)
+
+    assert node.namespace is ns
+
+def test_add_node_does_not_resolve_reference_aliases_eagerly():
+    ns = Namespace()
+    ns.uri = "urn:model1"
+    ns.add_alias("Organizes", "i=35")
+    ns.resolve = MagicMock(wraps=ns.resolve)
+
+    node = Node("ns=1;i=1", "1:Foo", NodeClass.Object, None)
+    node.add_reference("Organizes", "ns=1;i=2")
+
+    ns.add_node(node)
+    ns.resolve.assert_not_called()
+
+    assert node.references[0].reference_type == NodeId.from_string("i=35")
+    ns.resolve.assert_called_once_with("Organizes")
+
+def test_add_node_with_unresolvable_reference_alias_keeps_raw_reference_type():
+    ns = Namespace()
+    ns.uri = "urn:model1"
+
+    node = Node("ns=1;i=1", "1:Foo", NodeClass.Object, None)
+    node.add_reference("NotAnAlias", "ns=1;i=2")
+
+    ns.add_node(node)
+
+    assert node.node_id in ns.nid_to_idx
+    assert node.references[0].reference_type == "NotAnAlias"
 
 def test_find_node_by_nodeid():
     #TODO Replace og find_by_nodeid
