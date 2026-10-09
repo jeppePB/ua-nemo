@@ -1,5 +1,11 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from ua_nemo.core.node_id import NodeId
-from ua_nemo.types._protocols import NodeLike
+
+if TYPE_CHECKING:
+    from ua_nemo.core.node import Node
 
 class Reference:
     """
@@ -8,7 +14,7 @@ class Reference:
     """
     __slots__ = ("reference_type", "target_nodeid", "is_forward", "source", "target_idx")
     reference_type: NodeId
-    source: NodeLike
+    source: Node
     source_id: NodeId
     target_nodeid: NodeId
     is_forward: bool
@@ -36,11 +42,14 @@ class Reference:
             and self.is_forward == other.is_forward
     )
 
-    def __init__(self, reference_type: str|NodeId, target_nodeid: str|NodeId, is_forward:bool, source:NodeLike):
+    def __init__(self, reference_type: str|NodeId, target_nodeid: str|NodeId, is_forward:bool, source:Node):
         if source.namespace:
             reference_type = source.namespace.resolve(reference_type)
         if not isinstance(target_nodeid, NodeId):
             target_nodeid = NodeId.from_string(target_nodeid)
+        if not isinstance(reference_type, NodeId):
+            reference_type = NodeId.from_string(reference_type)
+
         self.target_nodeid = target_nodeid
         self.is_forward = is_forward
         self.source = source
@@ -51,20 +60,22 @@ class Reference:
     def is_hierarchical(self) -> bool:
         # Only hierarchical refs have base type for now
         ref_node = self.get_base_type_node()
+        if ref_node is None:
+            return False
         return ref_node.base_type is not None
 
     @property
-    def base_type(self) -> str:
+    def base_type(self) -> str | None:
         ref_node = self.get_base_type_node()
         if ref_node is None:
             return None
         return ref_node.display_name
 
     @property
-    def target(self) -> NodeLike:
+    def target(self) -> Node | None:
         return self.source.namespace.find_by_nodeid(self.target_nodeid)
 
-    def get_base_type_node(self) -> NodeLike:
+    def get_base_type_node(self) -> Node | None:
         if not self.source.namespace:
             return None
         if not isinstance(self.reference_type, NodeId):
