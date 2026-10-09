@@ -164,6 +164,19 @@ def test_resolve_node_returns_none_for_unregistered_target_namespace(ctx, ua_nam
     assert result is None
 
 
+def test_resolve_node_ns0_returns_none_when_ua_not_loaded(ctx):
+    # Without UA, index 0 of the model's array is the model itself, so this must not recurse.
+    custom = register_model(ctx, "urn:test:model1")
+
+    assert ctx.resolve_node(NodeId.from_string("ns=0;i=40"), from_ns=custom) is None
+
+
+def test_find_by_nodeid_ns0_returns_none_when_ua_not_loaded(ctx):
+    custom = register_model(ctx, "urn:test:model1")
+
+    assert custom.find_by_nodeid("ns=0;i=40") is None
+
+
 # ---- remap_nodeid ----
 
 def test_remap_nodeid_reindexes_into_target_models_namespace_array(ctx, ua_namespace):
