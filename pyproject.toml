@@ -8,11 +8,16 @@ version = "0.2.0"
 description = "Parses nodeset XML files and resolves relations. "
 readme = "README.md"
 authors= [{name = "Andreas Engh Halvorsen"}]
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 dependencies = [
     "lxml",
 ]
 [project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "pandas>2",
+    "pyright"
+]
 memory-profiling = [
     "memray>=1.10",
     "pytest-memray>=1.5"
@@ -29,6 +34,11 @@ pythonpath = ["src", "."]
 markers = [
     "memory_profile: tests for memory profiling",
 ]
+
+[tool.pyright]
+include = ["src"]
+pythonVersion = "3.12"
+typeCheckingMode = "basic"
 
 [tool.setuptools.package-data]
 ua_nemo = [
