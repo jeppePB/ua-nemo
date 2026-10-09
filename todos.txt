@@ -11,3 +11,40 @@
 - Namespace array is accessed in multiple places.
 
 - Make Reference a pure data object. Resolve and find through indices in Namespace.
+
+- References (nodes can be created without a namespace and attached later). Resolve lazily, for performance and memory:
+    - Reference accepts NodeId | str. str means an unresolved alias. Resolve on first access (cache the result), not in __init__ or add_node.
+    - Revert the eager NodeId.from_string in Reference.__init__ (raises for aliases without a namespace)
+      and restore the lazy resolve in get_base_type_node.
+    - Namespace.add_node only sets node.namespace (it currently doesn't). No reference resolution there.
+    - Reference.__eq__ (used by the duplicate check in Node.add_reference) must compare raw stored values, or it triggers resolution.
+    - Loader currently resolves every reference eagerly (model.resolve). Consider passing raw strings so it is lazy too.
+    - Unresolvable alias: raises ValueError on access, not on attach.
+    - Update test_reference.py tests to match (alias without namespace stays a str until attached).
+    - Pinned: moving/copying a node from one namespace to another (needs index and namespace-array remapping).
+
+- Loader robustness (nodesets often contain garbage):
+    - Unknown alias or malformed NodeId in a Reference currently aborts the whole load (model.resolve in try_parse_node_event).
+    - Malformed NodeId attribute on a node aborts the load (Node.__init__).
+    - NamespaceContext.resolve_node raises IndexError if ns_index is outside namespace_array.
+    - Skip and warn instead, and record what was dropped in a per-namespace issue list (e.g. load_issues).
+    - Add a failing test for each case before fixing.
+
+- Node without a namespace:
+    - Type Node.namespace as Namespace | None.
+    - Define behaviour for node_uri, type_uri, get_hierarchical_references and Reference.target when detached
+      (raise a clear error for operations without a meaningful answer, return None for lookups).
+    - Default browse-name ns index in Node.__init__ is guessed from the namespace at construction. Require an explicit
+      "0:Name"/QualifiedName when there is no namespace, or re-normalize in add_node.
+
+- Failing tests on protocol-removal branch:
+    - Browse-name index is commented out in Namespace.add_node (find_by_browse_name always returns []). Restore or replace.
+    - Infinite recursion in NamespaceContext.resolve_node when the UA namespace is not loaded (ns=0 lookup resolves to the same namespace).
+    - test_uri_cannot_be_overwritten and test_register_model_warns_when_ua_not_yet_loaded are out of date (use caplog, count matching records).
+    - tmp_path PermissionError on Windows: set --basetemp in pytest config.
+
+- Smaller things:
+    - QualifiedName defines __post__init__ (typo for __post_init__), so validation never runs.
+    - Namespace.nodes_by_browse_name is annotated dict[QualifiedName, Node] but should hold list[Node].
+    - Node.get_child calls Namespace.child_by_qname, which is commented out.
+    - Node.is_abstract tests node_class in TYPE_CLASSES, not the IsAbstract attribute.
