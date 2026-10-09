@@ -7,7 +7,7 @@ from ua_nemo.types._protocols import NamespaceLike
 import ua_nemo.node_definitions as nd
 
 #TODO Fix this bandaid
-HIERARCHICAL_REF = NodeId.from_string("i=40")
+TYPEDEF_REF = NodeId.from_string("i=40")
 
 logger = logging.getLogger(__name__)
 class Node:
@@ -134,7 +134,7 @@ class Node:
     @property
     def type_definition(self) -> NodeId:
         for ref in self.references:
-            if ref.reference_type == HIERARCHICAL_REF:
+            if ref.reference_type == TYPEDEF_REF:
                 return ref.target_nodeid
         return None
     
