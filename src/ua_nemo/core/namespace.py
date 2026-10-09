@@ -40,31 +40,31 @@ class Namespace:
     #TODO Add ".from_nodeset" function to load nodemodels from files
 
     _next_local_idx: int
-    _default_ctx: NamespaceContext = None
-    _uri: str
+    _default_ctx: NamespaceContext | None = None
+    _uri: str | None
 
     namespace_array: list
-    ns_ctx: NamespaceContext = None
+    ns_ctx: NamespaceContext
     aliases: dict[str, NodeId]
     is_type_namespace: bool
     is_ua_namespace: bool
 
     nid_to_idx: dict[NodeId, int]
     nodes: list[Node]
-    nodes_by_browse_name: dict[QualifiedName, Node]
+    nodes_by_browse_name: dict[QualifiedName, list[Node]]
     child_index: dict[
         int, dict[
             QualifiedName, list[int]]]
 
-    name: str
+    name: str | None
 
-    metadata: NamespaceMetadata
+    metadata: NamespaceMetadata | None
     dependencies: list[NamespaceMetadata]
 
-    def __init__(self, namespace_context: NamespaceContext = None):
+    def __init__(self, namespace_context: NamespaceContext | None = None):
         self.name = None
         self._uri = None
-        self._next_local_idx = 0
+        self._next_local_idx = 0    # Using this in case nodes should ever be removed, then index can be reused. Not implemented yet.
 
         self.is_type_namespace = False
         self.is_ua_namespace = False
@@ -103,9 +103,11 @@ class Namespace:
                 f"(URI={self._uri}, namespaces={ns_info}, nodes={len(self.nodes)})")
 
     def _mint_local_idx(self, node: Node) -> int:
-        node._local_idx = self._next_local_idx
+        cur_idx = self._next_local_idx
+        node._local_idx = cur_idx
         self._next_local_idx += 1
         self.nodes.append(node)
+        return cur_idx
 
     def _find_by_idx(self, idx: int) -> Node | None:
         """ Finds a node by its minted internal idx. Returns None if it does not exist. """
@@ -114,7 +116,7 @@ class Namespace:
         return None
     
     @property
-    def uri(self) -> str:
+    def uri(self) -> str | None:
         return self._uri
 
     @uri.setter
@@ -122,8 +124,8 @@ class Namespace:
         if self.uri:
             logger.warning("Attempted to set URI of model %s to %s.", self.uri, uri)
             return
-        if uri is None:
-            raise ValueError("URI can not be set to None.")
+        if not isinstance(uri, str):
+            raise ValueError("URI has to be a string.")
         if not self.name:
             #TODO Remove the whole 'name' concept. It's currently being used in the program logic,
             # and that needs to stop.
@@ -186,13 +188,14 @@ class Namespace:
         return self.namespace_array[ns_idx]
 
     def add_node(self, node: Node) -> None:
-        self._mint_local_idx(node)
+        cur_idx = self._mint_local_idx(node)
         self.ns_ctx._mint_global_idx(node)
 
-        self.nid_to_idx[node.node_id] = node._local_idx
+        self.nid_to_idx[node.node_id] = cur_idx
 
+        #TODO implement
         # Browse name index
-        self.nodes_by_browse_name.setdefault(node.browse_name, []).append(node)
+        # self.nodes_by_browse_name.setdefault(node.browse_name, []).append(node)
 
         if not self.is_type_namespace:
             if node.node_class in node_definitions.TYPE_CLASSES:
