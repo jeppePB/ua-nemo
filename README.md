@@ -143,7 +143,6 @@ ua_nemo/
     loader.py            # NodesetLoader
   types/
     qualified_name.py    # QualifiedName, NamespaceMetadata
-    _protocols.py        # NamespaceLike, NodeLike protocols
   engine.py              # ModelBuilderEngine
   xml_builder.py         # dump_model_to_xml_streaming
   node_definitions.py    # NodeClass enum and field definitions
