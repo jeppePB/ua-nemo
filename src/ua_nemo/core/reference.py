@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 from ua_nemo.core.node_id import NodeId
@@ -7,13 +8,16 @@ from ua_nemo.core.node_id import NodeId
 if TYPE_CHECKING:
     from ua_nemo.core.node import Node
 
+logger = logging.getLogger(__name__)
+
 class Reference:
     """
     target_idx references the minted index for the Node. It is populated if the node the reference is pointing from
     is in the same namespace as the node it is pointing to.
     """
-    __slots__ = ("reference_type", "target_nodeid", "is_forward", "source", "target_idx")
-    reference_type: NodeId
+    __slots__ = ("_reference_type", "_warned_unresolved", "target_nodeid", "is_forward", "source", "target_idx")
+    _reference_type: NodeId | str
+    _warned_unresolved: bool
     source: Node
     source_id: NodeId
     target_nodeid: NodeId
@@ -24,7 +28,7 @@ class Reference:
     def __repr__(self) -> str:
         cls = self.__class__.__name__
         return (f"{cls}("
-                f"type={self.reference_type!r}, "
+                f"type={self._reference_type!r}, "
                 f"target={self.target_nodeid}, "
                 f"is_forward={self.is_forward})")
 
@@ -37,24 +41,34 @@ class Reference:
             return NotImplemented
         return (
             self.source is other.source
-            and self.reference_type == other.reference_type
+            and self._reference_type == other._reference_type
             and self.target_nodeid == other.target_nodeid
             and self.is_forward == other.is_forward
     )
 
     def __init__(self, reference_type: str|NodeId, target_nodeid: str|NodeId, is_forward:bool, source:Node):
-        if source.namespace:
-            reference_type = source.namespace.resolve(reference_type)
         if not isinstance(target_nodeid, NodeId):
             target_nodeid = NodeId.from_string(target_nodeid)
-        if not isinstance(reference_type, NodeId):
-            reference_type = NodeId.from_string(reference_type)
 
         self.target_nodeid = target_nodeid
         self.is_forward = is_forward
         self.source = source
-        self.reference_type = reference_type
+        self._reference_type = reference_type
+        self._warned_unresolved = False
         self.target_idx = None
+
+    @property
+    def reference_type(self) -> NodeId | str:
+        """A str is an unresolved alias. It is resolved on first access once the source node has a namespace,
+        and stays a str if it can't be resolved."""
+        if isinstance(self._reference_type, str) and self.source.namespace:
+            try:
+                self._reference_type = self.source.namespace.resolve(self._reference_type)
+            except ValueError:
+                if not self._warned_unresolved:
+                    self._warned_unresolved = True
+                    logger.warning("Could not resolve reference type '%s'. Keeping the raw value.", self._reference_type)
+        return self._reference_type
 
     @property
     def is_hierarchical(self) -> bool:
@@ -78,6 +92,7 @@ class Reference:
     def get_base_type_node(self) -> Node | None:
         if not self.source.namespace:
             return None
-        if not isinstance(self.reference_type, NodeId):
-            self.reference_type = self.source.namespace.resolve(self.reference_type)
-        return self.source.namespace.find_by_nodeid(self.reference_type)
+        ref_type = self.reference_type
+        if not isinstance(ref_type, NodeId):
+            return None
+        return self.source.namespace.find_by_nodeid(ref_type)

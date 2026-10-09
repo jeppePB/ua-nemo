@@ -155,7 +155,9 @@ class Node:
         for ref in self.references:
             if not ref.is_forward == is_forward:
                 continue
-            ref_type = self.namespace.resolve(ref.reference_type)
+            ref_type = ref.reference_type
+            if not isinstance(ref_type, NodeId):
+                continue
             ref_type_node = self.namespace.find_by_nodeid(ref_type)
             if ref_type_node is not None:
                 if ref_type_node.base_type is not None:
@@ -177,8 +179,6 @@ class Node:
     #     return self.namespace.child_by_qname(self, child_browse_name, handle_multiple)
     
     def add_reference(self, reference_type: str | NodeId, target_nodeid: str|NodeId, is_forward:bool=True):
-        if isinstance(reference_type, str):
-            reference_type = NodeId.from_string(reference_type)
         if isinstance(target_nodeid, str):
             target_nodeid = NodeId.from_string(target_nodeid)
         ref = Reference(reference_type, target_nodeid, is_forward, self)
