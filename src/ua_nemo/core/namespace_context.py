@@ -84,6 +84,9 @@ class NamespaceContext:
             return None
         
         if nid.ns_index == 0:   # UA namespace
+            # Without UA loaded, index 0 can be a non-UA namespace, and find_by_nodeid would loop back here.
+            if not target_ns.is_ua_namespace:
+                return None
             return target_ns.find_by_nodeid(nid)
         
         else:
