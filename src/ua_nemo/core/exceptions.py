@@ -1,17 +1,18 @@
+from collections.abc import Sequence
 from pathlib import Path
 
 from ua_nemo.types import NamespaceMetadata
 
 class MissingRequiredModelError(Exception):
     requesting:     NamespaceMetadata
-    missing:        list[NamespaceMetadata]
+    missing:        tuple[NamespaceMetadata, ...]
     nodeset_path:   Path
 
     def __init__(
             self,
             *,
             requesting:NamespaceMetadata,
-            missing: list[NamespaceMetadata],
+            missing: Sequence[NamespaceMetadata],
             nodeset_path: Path):
         
         if not missing:

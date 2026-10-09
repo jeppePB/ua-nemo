@@ -1,5 +1,6 @@
 from ua_nemo.core import Namespace, NodeId, Node
 from ua_nemo.node_definitions import NodeClass
+from ua_nemo.types import QualifiedName
 from ua_nemo.utils import split_node_fields
 
 HIERARCHICAL_REF = NodeId.from_string("i=40")
@@ -18,7 +19,7 @@ class TypeInstantiator:
         self.target_model = target_model
         self.ns_context = target_model.ns_ctx
 
-    def instantiate(self, typename: str, instance_nodeid: str, instance_browsename: str, include_optional: bool = False, **kwargs) -> str:
+    def instantiate(self, typename: str | QualifiedName, instance_nodeid: str, instance_browsename: str | QualifiedName, include_optional: bool = False, **kwargs) -> NodeId:
         # Find typedefinition
         type_nodes = self.typelib_model.find_by_browse_name(typename)
         if not type_nodes:

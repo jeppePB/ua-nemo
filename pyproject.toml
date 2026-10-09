@@ -38,6 +38,7 @@ markers = [
 
 [tool.pyright]
 include = ["src"]
+exclude = ["src/ua_nemo/engine.py", "src/ua_nemo/xml_builder.py"]
 pythonVersion = "3.12"
 typeCheckingMode = "basic"
 

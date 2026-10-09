@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Callable
 import logging
@@ -19,6 +20,7 @@ UA_NODESET = Path(__file__).resolve().parent.parent / "typelibraries" / "ua_node
 HIERARCHICAL_UA_REFS = ["i=33"]
 NON_HIERARCHICAL_USA_REFS = ["i=32"]
 HAS_SUBTYPE = "i=45"
+HAS_SUBTYPE_NID = NodeId.from_string(HAS_SUBTYPE)
 
 # Missing views and methods
 SUPPORTED_NODE_TAGS = {
@@ -55,7 +57,7 @@ def extract_references(elem, ns) -> tuple[ParsedReference, ...]:
             out.append(ParsedReference(ref_type, target_text, is_forward))
     return tuple(out)
         
-def parse_models_event(event: str, elem, ns_metadata: Namespace) -> None:
+def parse_models_event(event: str, elem, ns_metadata: list[NamespaceMetadata]) -> None:
     if event != "end":
         return
 
@@ -148,27 +150,21 @@ def check_nodeset_end(event:str, elem) -> bool:
 class NodesetLoader:
     def __init__(
         self,
-        namespace_factory: Callable[[], Namespace] = None,
-        node_factory: Callable[..., Node] = None,
-        resolve_node_class: Callable[[str], NodeClass] = None,
-        split_node_fields: Callable[[NodeClass, dict], tuple[dict, dict]] = None,
+        namespace_factory: Callable[[], Namespace] | None = None,
+        node_factory: Callable[..., Node] | None = None,
+        resolve_node_class: Callable[[str], NodeClass] | None = None,
+        split_node_fields: Callable[[NodeClass, dict], tuple[dict, dict]] | None = None,
         progress: Callable[[int], None] | None = None
     ):
         
         # To make the class more easily testable, it is possible to swap out each component with a test method.
-        if namespace_factory is None or node_factory is None or resolve_node_class is None or split_node_fields is None:
-            from ua_nemo.core import Namespace, Node
-            from ua_nemo.node_definitions import resolve_node_class as _rnc
-            from ua_nemo.utils import split_node_fields as _snf
-            namespace_factory = namespace_factory or Namespace
-            node_factory = node_factory or Node
-            resolve_node_class = resolve_node_class or _rnc
-            split_node_fields = split_node_fields or _snf
+        from ua_nemo.node_definitions import resolve_node_class as _rnc
+        from ua_nemo.utils import split_node_fields as _snf
         
-        self._namespace_factory = namespace_factory
-        self._node_factory = node_factory
-        self._resolve_node_class = resolve_node_class
-        self._split_node_fields = split_node_fields
+        self._namespace_factory = namespace_factory or Namespace
+        self._node_factory = node_factory or Node
+        self._resolve_node_class = resolve_node_class or _rnc
+        self._split_node_fields = split_node_fields or _snf
         self._progress = progress
 
     def load(self, xml_path: Path, missing_requirements_strategy: str = "defer") -> dict[str, Namespace]:
@@ -269,7 +265,7 @@ class NodesetLoader:
         for node in refs_to_classify:
             node.base_type = self._resolve_ua_basetype(node)
 
-    def _resolve_ua_basetype(self, node: "Node") -> "NodeId":
+    def _resolve_ua_basetype(self, node: "Node") -> "NodeId | None":
         namespace = node.namespace
 
         if node.base_type:
@@ -279,7 +275,7 @@ class NodesetLoader:
             return node.node_id
 
         for ref in node.references:
-            if ref.reference_type.to_string() == HAS_SUBTYPE and not ref.is_forward:
+            if ref.reference_type == HAS_SUBTYPE_NID and not ref.is_forward:
                 if ref.target_nodeid.to_string() in HIERARCHICAL_UA_REFS:
                     return node.node_id
                 parent_node = namespace.find_by_nodeid(ref.target_nodeid)
@@ -301,7 +297,7 @@ class NodesetLoader:
         xml_files = list(typelib_path.glob("*.xml"))
         return self.load_from_file_list(xml_files, handle_max_deferred_strategy)
         
-    def load_from_file_list(self, file_list:list[str|Path], handle_max_deferred_strategy:str="ignore", deferred=0) -> dict[str, Namespace]:
+    def load_from_file_list(self, file_list: Sequence[str|Path], handle_max_deferred_strategy:str="ignore", deferred=0) -> dict[str, Namespace]:
         """Legacy support
 
         Args:

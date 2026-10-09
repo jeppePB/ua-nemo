@@ -38,6 +38,8 @@ class NamespaceContext:
     
     #? Would I like to automatically load the ua nodeset here?
     def register_model(self, ns: Namespace) -> None:
+        if ns.name is None or ns.uri is None:
+            raise ValueError("A namespace needs a name and a uri before it can be registered.")
         last_idx = len(self.namespaces)
         self.namespaces.append(ns)
         self._name_to_ns[ns.name] = last_idx
@@ -47,17 +49,19 @@ class NamespaceContext:
             ua_namespace = self.get_namespace_by_name("UA")
             if ua_namespace is None:
                 logger.warning("UA namespace has not been loaded. Model %s has an empty namespace on index 0 of its namespace array.", ns.uri)
-            else:
+            elif ua_namespace.uri is not None:
                 ns.add_namespace(ua_namespace.uri)
 
         ns.add_namespace(ns.uri) #TODO this should be handled by the ns itself
     
-    def get_model(self, name: str = None, uri: str = None) -> Namespace | None:
+    def get_model(self, name: str | None = None, uri: str | None = None) -> Namespace | None:
         #! DEPRECATED
         if name is None and uri is None:
             raise ValueError("One of name or uri is required")
         if name:
             return self.get_namespace_by_name(name)
+        if uri is None:
+            return None
         return self.get_namespace_by_uri(uri)
 
     def get_namespace_by_name(self, model_name: str) -> Namespace | None:
