@@ -31,6 +31,7 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src", "."]
+addopts = "--basetemp=.pytest_tmp"
 markers = [
     "memory_profile: tests for memory profiling",
 ]
