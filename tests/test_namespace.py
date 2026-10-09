@@ -16,6 +16,7 @@ def test_create_namespace_defaults():
 def test_uri_cannot_be_overwritten(caplog):
     ns = Namespace()
     ns.uri = "http://yourcompany.com/test-types/"
+    caplog.clear()  # Drop the "UA namespace has not been loaded" warning from registering the model.
     with caplog.at_level(logging.WARNING):
         ns.uri = "thisfails"
     
@@ -192,6 +193,48 @@ def test_find_by_browse_name_does_not_normalize_for_ua():
 
     # For UA model, don't force "1:" prefix
     assert ua.find_by_browse_name("0:Root") == [node]
+
+def test_find_by_browse_name_returns_all_nodes_with_same_name_in_insertion_order():
+    ns = Namespace()
+    ns.uri = "urn:model1"
+
+    first = Node("ns=1;i=1", "1:Foo", NodeClass.Object, ns)
+    second = Node("ns=1;i=2", "1:Foo", NodeClass.Object, ns)
+    ns.add_node(first)
+    ns.add_node(second)
+
+    assert ns.find_by_browse_name("Foo") == [first, second]
+
+def test_find_by_browse_name_returns_empty_list_for_unknown_name():
+    ns = Namespace()
+    ns.uri = "urn:model1"
+    ns.add_node(Node("ns=1;i=1", "1:Foo", NodeClass.Object, ns))
+
+    assert ns.find_by_browse_name("Nope") == []
+
+def test_browse_name_index_is_built_lazily():
+    ns = Namespace()
+    ns.uri = "urn:model1"
+    ns.add_node(Node("ns=1;i=1", "1:Foo", NodeClass.Object, ns))
+
+    assert ns._nodes_by_browse_name is None
+    ns.find_by_browse_name("Foo")
+    assert ns._nodes_by_browse_name is not None
+
+def test_browse_name_index_includes_nodes_added_after_first_lookup():
+    ns = Namespace()
+    ns.uri = "urn:model1"
+    first = Node("ns=1;i=1", "1:Foo", NodeClass.Object, ns)
+    ns.add_node(first)
+    assert ns.find_by_browse_name("Foo") == [first]
+
+    second = Node("ns=1;i=2", "1:Foo", NodeClass.Object, ns)
+    other = Node("ns=1;i=3", "1:Bar", NodeClass.Object, ns)
+    ns.add_node(second)
+    ns.add_node(other)
+
+    assert ns.find_by_browse_name("Foo") == [first, second]
+    assert ns.find_by_browse_name("Bar") == [other]
 
 def test_node_is_assigned_minted_idx():
     ns = Namespace()

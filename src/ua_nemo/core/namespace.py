@@ -1,5 +1,6 @@
 from __future__ import annotations
 import logging
+from collections import defaultdict
 from urllib.parse import urlparse
 
 import ua_nemo.node_definitions as node_definitions
@@ -51,7 +52,7 @@ class Namespace:
 
     nid_to_idx: dict[NodeId, int]
     nodes: list[Node]
-    nodes_by_browse_name: dict[QualifiedName, list[Node]]
+    _nodes_by_browse_name: defaultdict[QualifiedName, list[Node]] | None
     child_index: dict[
         int, dict[
             QualifiedName, list[int]]]
@@ -71,7 +72,7 @@ class Namespace:
 
         # Canonical mappings
         self.nid_to_idx = {}
-        self.nodes_by_browse_name = {}
+        self._nodes_by_browse_name = None
 
         # Dense array lookup
         self.nodes = []
@@ -194,9 +195,9 @@ class Namespace:
 
         self.nid_to_idx[node.node_id] = cur_idx
 
-        #TODO implement
-        # Browse name index
-        # self.nodes_by_browse_name.setdefault(node.browse_name, []).append(node)
+        # The index is built on the first browse name lookup; only keep it current once it exists.
+        if self._nodes_by_browse_name is not None:
+            self._nodes_by_browse_name[node.browse_name].append(node)
 
         if not self.is_type_namespace:
             if node.node_class in node_definitions.TYPE_CLASSES:
@@ -230,6 +231,11 @@ class Namespace:
                 browse_name = QualifiedName.from_string(browse_name)
             else:
                 browse_name = QualifiedName.from_string(browse_name, 1)
-        return self.nodes_by_browse_name.get(browse_name, [])
+        if self._nodes_by_browse_name is None:
+            self._nodes_by_browse_name = defaultdict(list)
+            for node in self.nodes:
+                self._nodes_by_browse_name[node.browse_name].append(node)
+        # .get avoids inserting empty lists for unknown names.
+        return self._nodes_by_browse_name.get(browse_name, [])
 
 #TODO Write new tests

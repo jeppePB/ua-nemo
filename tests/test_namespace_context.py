@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 import pytest
 
 from ua_nemo.core.namespace import (
@@ -60,9 +62,10 @@ def test_dependent_model_gets_ua_at_index_zero_and_self_at_index_one(ctx, ua_nam
     assert custom.namespace_array == [UA_URI, "urn:test:model1"]
 
 
-def test_register_model_warns_when_ua_not_yet_loaded(ctx, capsys):
-    register_model(ctx, "urn:test:model1")
-    assert "UA namespace has not been loaded" in capsys.readouterr().out
+def test_register_model_warns_when_ua_not_yet_loaded(ctx, caplog):
+    with caplog.at_level(logging.WARNING):
+        register_model(ctx, "urn:test:model1")
+    assert "UA namespace has not been loaded" in caplog.text
 
 
 def test_own_uri_still_added_when_ua_missing(ctx):

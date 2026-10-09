@@ -72,8 +72,8 @@ def test_load_ignores_missing_required_models_when_configured(tmp_path, caplog):
     with caplog.at_level(logging.WARNING):
         res = loader.load(xml_path, missing_requirements_strategy="ignore")
     
-    assert len(caplog.records) == 1
-    assert "missing required model" in caplog.text.lower()
+    missing_warnings = [r for r in caplog.records if "missing required model" in r.getMessage().lower()]
+    assert len(missing_warnings) == 1
 
     ns = next(iter(res.values()))
     assert ns.uri == "urn:test:model"
