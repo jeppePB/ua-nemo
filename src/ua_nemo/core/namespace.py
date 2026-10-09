@@ -188,6 +188,7 @@ class Namespace:
         return self.namespace_array[ns_idx]
 
     def add_node(self, node: Node) -> None:
+        node.namespace = self
         cur_idx = self._mint_local_idx(node)
         self.ns_ctx._mint_global_idx(node)
 
