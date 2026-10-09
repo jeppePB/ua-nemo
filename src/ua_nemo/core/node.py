@@ -1,10 +1,15 @@
+from __future__ import annotations
+
 import logging
+from typing import TYPE_CHECKING
 
 from ua_nemo.core import NodeId, Reference
 from ua_nemo.types import QualifiedName
-from ua_nemo.types._protocols import NamespaceLike
 
 import ua_nemo.node_definitions as nd
+
+if TYPE_CHECKING:
+    from ua_nemo.core.namespace import Namespace
 
 #TODO Fix this bandaid
 TYPEDEF_REF = NodeId.from_string("i=40")
@@ -26,7 +31,7 @@ class Node:
 
     _local_idx:     int | None
     _global_idx:    int | None
-    namespace:      NamespaceLike
+    namespace:      Namespace
     node_id:        NodeId
     browse_name:    QualifiedName
     node_class:     nd.NodeClass
@@ -40,9 +45,9 @@ class Node:
             node_id: str|NodeId, 
             browse_name: str|QualifiedName, 
             node_class: nd.NodeClass, 
-            namespace: NamespaceLike,
-            attributes: dict={}, 
-            subnodes: dict={},
+            namespace: Namespace,
+            attributes: dict | None = None, 
+            subnodes: dict | None = None,
         ):
         
         self._local_idx = None
@@ -152,22 +157,30 @@ class Node:
                 continue
             ref_type = self.namespace.resolve(ref.reference_type)
             ref_type_node = self.namespace.find_by_nodeid(ref_type)
+            if ref_type_node is not None:
+                if ref_type_node.base_type is not None:
+                    hierarchical_refs.append(ref)
             #TODO Base type is currently only set for hierarchical refs. Need to clean this up.
-            if ref_type_node.base_type:
-                hierarchical_refs.append(ref)
+            # if ref_type_node.base_type:
+            #     hierarchical_refs.append(ref)
         return hierarchical_refs
+
+    """TODO IMPLEMENT"""    
+    # def get_child(self, child_browse_name: str|QualifiedName, handle_multiple:str="fail") -> "Node":
+    #     """handle_multiple: strategy used when model has not been properly build and multiple
+    #     children have the same qualified name. 
+    #     Options:
+    #         - fail: raises AmbiguousChildError
+    #         - ignore: returns a list of matching nodes"""
+    #     if isinstance(child_browse_name, str):
+    #         child_browse_name = QualifiedName.from_string(child_browse_name)
+    #     return self.namespace.child_by_qname(self, child_browse_name, handle_multiple)
     
-    def get_child(self, child_browse_name: str|QualifiedName, handle_multiple:str="fail") -> "Node":
-        """handle_multiple: strategy used when model has not been properly build and multiple
-        children have the same qualified name. 
-        Options:
-            - fail: raises AmbiguousChildError
-            - ignore: returns a list of matching nodes"""
-        if isinstance(child_browse_name, str):
-            child_browse_name = QualifiedName.from_string(child_browse_name)
-        return self.namespace.child_by_qname(self, child_browse_name, handle_multiple)
-    
-    def add_reference(self, reference_type: str, target_nodeid: str, is_forward:bool=True):
+    def add_reference(self, reference_type: str | NodeId, target_nodeid: str|NodeId, is_forward:bool=True):
+        if isinstance(reference_type, str):
+            reference_type = NodeId.from_string(reference_type)
+        if isinstance(target_nodeid, str):
+            target_nodeid = NodeId.from_string(target_nodeid)
         ref = Reference(reference_type, target_nodeid, is_forward, self)
         if self.namespace:
             target_idx = self.namespace.nid_to_idx.get(target_nodeid)
