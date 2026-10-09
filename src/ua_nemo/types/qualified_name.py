@@ -38,7 +38,7 @@ class NamespaceMetadata:
     is_mandatory: bool
     version: str | None
     publication_date: str | None
-    extras: Mapping[str, str] = ()
+    extras: Mapping[str, str]
 
     @staticmethod
     def from_xml_attrib(attrib: Mapping[str, Any], *, is_mandatory: bool) -> "NamespaceMetadata":
