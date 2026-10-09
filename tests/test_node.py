@@ -77,6 +77,13 @@ def test_hierarchical_children_parents(ns, make_ref):
     assert n.hierarchical_children == [fwd]
     assert n.hierarchical_parents == [bwd]
 
+def test_hierarchical_references_skip_unresolvable_reference_type(ns, make_ref):
+    n = Node("ns=1;i=1", "1:Foo", ndef.NodeClass.Object, ns)
+    n.references.append(make_ref("NotAnAlias", "ns=1;i=2", True, n))
+
+    assert n.hierarchical_children == []
+    assert n.hierarchical_parents == []
+
 def test_add_reference_dedup(ns):
     n = Node("ns=1;i=1", "1:Foo", ndef.NodeClass.Object, ns)
     n.add_reference("ns=1;i=200", "ns=1;i=2", True)
