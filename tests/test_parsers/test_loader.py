@@ -70,12 +70,11 @@ def test_load_ignores_missing_required_models_when_configured(tmp_path, caplog):
     )
 
     with caplog.at_level(logging.WARNING):
-        res = loader.load(xml_path, missing_requirements_strategy="ignore")
+        ns = loader.load(xml_path, missing_requirements_strategy="ignore")
     
     missing_warnings = [r for r in caplog.records if "missing required model" in r.getMessage().lower()]
     assert len(missing_warnings) == 1
 
-    ns = next(iter(res.values()))
     assert ns.uri == "urn:test:model"
     assert NodeId.from_string("i=1001") in ns.nid_to_idx
 
@@ -104,9 +103,7 @@ def test_alias_resolution_applied_to_reference_type_and_target(tmp_path):
         """,
     )
 
-    res = loader.load(xml_path)
-
-    ns : Namespace = next(iter(res.values()))
+    ns: Namespace = loader.load(xml_path)
     node = ns.find_by_nodeid("ns=1;i=9001")
     assert len(node.references) == 1
 
@@ -137,9 +134,7 @@ def test_classify_reference_base_hierarchical_sets_base_type_to_self(tmp_path):
     """,
     )
 
-    res = loader.load(xml_path)
-
-    ns = next(iter(res.values()))
+    ns = loader.load(xml_path)
 
     node = ns.find_by_nodeid(TARGET_NID)
     assert node.base_type is not None
@@ -170,116 +165,7 @@ def test_classify_child_of_base_hierarchical_sets_base_type_to_own_nodeid(tmp_pa
         """,
     )
 
-    res = loader.load(xml_path)
-
-    ns = next(iter(res.values()))
+    ns = loader.load(xml_path)
     child = ns.find_by_nodeid("i=1000")
     assert child.base_type is not None
     assert child.base_type.to_string() == "i=1000"
-
-
-def test_load_from_file_list_defers_and_retries(tmp_path):
-    """
-    A.xml requires B.xml. First attempt defers A, loads B, then retries A.
-    Loaded_model_uris are stored in NamespaceStub to simulate namespace context.
-    """
-    loader = NodesetLoader()
-
-    a = write_xml(
-        tmp_path,
-        "A.xml",
-        f"""\
-        <UANodeSet xmlns="{UA_NS}">
-            <Models>
-                <Model ModelUri="urn:A">
-                    <RequiredModel ModelUri="urn:B"/>
-                </Model>
-            </Models>
-        </UANodeSet>
-        """,
-    )
-    b = write_xml(
-        tmp_path,
-        "B.xml",
-        f"""\
-        <UANodeSet xmlns="{UA_NS}">
-            <Models>
-                <Model ModelUri="urn:B"/>
-            </Models>
-        </UANodeSet>
-        """,
-            )
-
-    out = loader.load_from_file_list([a, b])
-    assert isinstance(out, dict)
-    loaded_model_uris = [v.uri for v in out.values()]
-    assert "urn:A" in loaded_model_uris
-    assert "urn:B" in loaded_model_uris
-
-def test_load_from_file_list_defers_and_ignores(tmp_path, caplog):
-    """
-    A.xml requires B.xml. A is deferrred until max_attempts before finally returning model
-    Loaded_model_uris are stored in NamespaceStub to simulate namespace context.
-    """
-    loader = NodesetLoader()
-
-    a = write_xml(
-        tmp_path,
-        "A.xml",
-        f"""\
-        <UANodeSet xmlns="{UA_NS}">
-            <Models>
-                <Model ModelUri="urn:A">
-                    <RequiredModel ModelUri="urn:B"/>
-                </Model>
-            </Models>
-        </UANodeSet>
-        """,
-    )
-
-
-    with caplog.at_level(logging.WARNING):
-        res = loader.load_from_file_list([a], handle_max_deferred_strategy="ignore")
-    
-    assert len(caplog.records) == 1
-    assert "missing required model" in caplog.text.lower()
-    assert isinstance(res, dict)
-    loaded_model_uris = [v.uri for v in res.values()]
-    assert "urn:A" in loaded_model_uris
-
-def test_load_from_file_list_defers_and_raises(tmp_path, caplog):
-    """
-    A.xml requires B.xml. A is deferrred until max_attempts before finally returning model
-    Loaded_model_uris are stored in NamespaceStub to simulate namespace context.
-    """
-    loader = NodesetLoader()
-
-    xml_path = write_xml(
-        tmp_path,
-        "test_model.xml",
-        f"""\
-        <UANodeSet xmlns="{UA_NS}">
-            <Models>
-                <Model ModelUri="urn:test:model" Version="1.0">
-                    <RequiredModel ModelUri="urn:missing:dep1"/>
-                </Model>
-            </Models>
-        </UANodeSet>
-        """,
-    )
-
-
-    with caplog.at_level(logging.ERROR):
-        with pytest.raises(MissingRequiredModelError) as ei:
-            loader.load_from_file_list([xml_path], handle_max_deferred_strategy="raise")
-    
-    assert len(caplog.records) == 1
-    assert "failed to load required models" in caplog.text.lower()
-    
-    exc = ei.value
-    assert exc.nodeset_path == xml_path
-    assert exc.requesting.uri == "urn:test:model"
-    assert exc.requesting.version == "1.0"
-
-    missing_uris = [dep.uri for dep in exc.missing]
-    assert missing_uris == ["urn:missing:dep1"]

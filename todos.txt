@@ -29,6 +29,11 @@
     - NamespaceContext.resolve_node raises IndexError if ns_index is outside namespace_array.
     - Skip and warn instead, and record what was dropped in a per-namespace issue list (e.g. load_issues).
     - Add a failing test for each case before fixing.
+    - A load that is deferred (MissingRequiredModelError) has already registered its namespace in the NamespaceContext
+      (uri setter), so the retry registers a second namespace with the same uri. Unregister or defer registration.
+    - Loader return value rewrite: load() returns Namespace, load_from_path/load_from_file_list live in ua_nemo/loading.py
+      and return a NamespaceContext. Remaining: update tests (test_loader, test_node_model, test_engine, tests/memory),
+      and consider dropping Namespace._default_ctx.
 
 - Node without a namespace:
     - Type Node.namespace as Namespace | None.

@@ -1,4 +1,3 @@
-from collections.abc import Sequence
 from pathlib import Path
 from typing import Callable
 import logging
@@ -167,7 +166,7 @@ class NodesetLoader:
         self._split_node_fields = split_node_fields or _snf
         self._progress = progress
 
-    def load(self, xml_path: Path, missing_requirements_strategy: str = "defer") -> dict[str, Namespace]:
+    def load(self, xml_path: Path, missing_requirements_strategy: str = "defer") -> Namespace:
         model = self._namespace_factory()
         ns = {"ua": "http://opcfoundation.org/UA/2011/03/UANodeSet.xsd"}
 
@@ -222,7 +221,7 @@ class NodesetLoader:
             self._check_missing_requirements(model, xml_path, missing_requirements_strategy)
         
         self._classify_references(refs_to_classify)
-        return {model.name: model}
+        return model
     
     def _process_header_data(self, model: Namespace, ns_metadata: list[NamespaceMetadata], ns_array: list[str]):
         """Because some namespaces don't use the model tag, the namespace uri sometimes have to be pulled from the ns_array"""
@@ -284,65 +283,6 @@ class NodesetLoader:
                 return self._resolve_ua_basetype(parent_node)
 
         return None
-
-    def load_from_path(self, typelib_path: Path, handle_max_deferred_strategy:str="ignore") -> dict[str, Namespace]:
-        """Loads typelibraries from a directory path
-
-        Args:
-            typelib_path (Path): Path to directory containing typelibrary files
-
-        Returns:
-            dict: Mapping of model_name:model
-        """
-        xml_files = list(typelib_path.glob("*.xml"))
-        return self.load_from_file_list(xml_files, handle_max_deferred_strategy)
-        
-    def load_from_file_list(self, file_list: Sequence[str|Path], handle_max_deferred_strategy:str="ignore", deferred=0) -> dict[str, Namespace]:
-        """Legacy support
-
-        Args:
-            file_list (list[str | Path]): List of files
-
-        Returns:
-            dict: Mapping of model_name:model
-        """
-        # Max attempts to load namespaces if required models are missing
-        max_attempts = 3
-        max_attempts_reached = deferred >= max_attempts
-
-        file_list = [Path(f) for f in file_list]
-        
-        load_order:list[Path] = []
-        
-        if deferred == 0:
-            if not any("Opc.Ua.NodeSet2" in file.name for file in file_list):
-                load_order.append(Path(UA_NODESET / "Opc.Ua.NodeSet2.xml"))
-            else:
-                load_order.append(next(f for f in file_list if "Opc.Ua.NodeSet2" in f.name))
-        
-        load_order += sorted(file_list, key=lambda p: p.name)
-
-        namespace_dict: dict[str, Namespace]= {}
-        deferred_load: list[Path] = []
-
-        for file in load_order:
-            if not file.is_file():
-                continue
-            try:
-                strategy = handle_max_deferred_strategy if max_attempts_reached else "defer"
-                namespace_dict.update(self.load(file, missing_requirements_strategy=strategy))
-            except MissingRequiredModelError as e:
-                if max_attempts_reached and handle_max_deferred_strategy == "raise":
-                    logger.error("Failed to load required models for nodeset")
-                    raise e
-                else:
-                    logger.info("Deferring load of %s: %s", file, e)
-                    deferred_load.append(file)
-            
-        if deferred_load:
-            namespace_dict.update(self.load_from_file_list(deferred_load, handle_max_deferred_strategy, deferred + 1))
-
-        return namespace_dict
     
         
 

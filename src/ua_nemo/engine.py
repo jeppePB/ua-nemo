@@ -2,7 +2,7 @@ from pathlib import Path
 
 from ua_nemo.core import Namespace, NodeId
 from ua_nemo.type_instantiator import TypeInstantiator
-from ua_nemo.parsers import NodesetLoader
+from ua_nemo.loading import load_from_file_list, load_from_path
 from ua_nemo.types import QualifiedName
 
 """
@@ -30,13 +30,13 @@ class ModelBuilderEngine:
             dir_path (Path, optional): Path to directory containing typelibrary files. Defaults to None.
             file_list (list[Path | str], optional): List of files to load. Defaults to None.
         """
-        loader = NodesetLoader()
         if dir_path:
-            self.typelibraries = loader.load_from_path(dir_path)
+            ctx = load_from_path(dir_path)
         elif file_list:
-            self.typelibraries = loader.load_from_file_list(file_list)
+            ctx = load_from_file_list(file_list)
         else:
-            self.typelibraries = loader.load_from_file_list([])
+            ctx = load_from_file_list([])
+        self.typelibraries = {ns.name: ns for ns in ctx.namespaces if ns.name}
 
 
 

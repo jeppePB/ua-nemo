@@ -1,6 +1,6 @@
 from pathlib import Path
 from ua_nemo.core import Namespace
-from ua_nemo.parsers import NodesetLoader
+from ua_nemo.loading import load_from_file_list
 
 #TODO The namespace context is a class variable, needs to be reset between test runs. That is not being done currently.
 UA_PATH = Path.cwd() / "typelibraries" / "ua_nodeset" / "Opc.Ua.NodeSet2.xml"
@@ -21,9 +21,10 @@ def test_default_namespace_context():
     assert model_one.namespace_array != model_two.namespace_array
     
 def test_namespace_array():
-    ua_model:Namespace = NodesetLoader().load_from_file_list([])["UA"]
+    ctx = load_from_file_list([])
+    ua_model = ctx.get_namespace_by_name("UA")
 
-    model_one = Namespace()
+    model_one = Namespace(ctx)
     model_one.uri = "http://model_one.org"
     
     assert len(model_one.namespace_array) == 2

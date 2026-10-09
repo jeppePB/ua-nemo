@@ -15,30 +15,27 @@ Requires Python 3.10+.
 - **`Namespace`** — an in-memory representation of one loaded NodeSet. Holds all nodes, aliases, and the namespace array for that model.
 - **`NamespaceContext`** — a shared registry across all `Namespace` instances. Tracks which models are loaded and resolves cross-namespace node lookups.
 - **`Node`** — a single OPC UA node with a node ID, browse name, node class, attributes, subnodes, and references.
-- **`NodesetLoader`** — parses NodeSet XML files and populates `Namespace` objects.
+- **`NodesetLoader`** — parses a single NodeSet XML file into a `Namespace`.
 
 ## Loading NodeSet XML files
 
-`NodesetLoader` always loads the standard OPC UA base NodeSet (`Opc.Ua.NodeSet2.xml`) automatically before any other files.
+`load_from_path` and `load_from_file_list` always load the standard OPC UA base NodeSet (`Opc.Ua.NodeSet2.xml`) automatically before any other files, and return a `NamespaceContext` holding every loaded namespace.
 
 ### Load from a directory
 
 ```python
-from ua_nemo.parsers import NodesetLoader
+from ua_nemo import load_from_path
 
-loader = NodesetLoader()
-namespaces = loader.load_from_path("path/to/nodesets/")
-# Returns {"UA": <Namespace>, "my-types": <Namespace>, ...}
+ctx = load_from_path("path/to/nodesets/")
 ```
 
 ### Load from an explicit file list
 
 ```python
 from pathlib import Path
-from ua_nemo.parsers import NodesetLoader
+from ua_nemo import load_from_file_list
 
-loader = NodesetLoader()
-namespaces = loader.load_from_file_list([
+ctx = load_from_file_list([
     Path("nodesets/Opc.Ua.NodeSet2.xml"),
     Path("nodesets/MyCompany.NodeSet2.xml"),
 ])
@@ -50,33 +47,34 @@ namespaces = loader.load_from_file_list([
 from pathlib import Path
 from ua_nemo.parsers import NodesetLoader
 
-loader = NodesetLoader()
-namespaces = loader.load(Path("nodesets/MyCompany.NodeSet2.xml"))
+namespace = NodesetLoader().load(Path("nodesets/MyCompany.NodeSet2.xml"))
 ```
 
 ### Missing dependencies
 
-If a NodeSet declares a required model that has not been loaded yet, the loader defers it and retries after all other files are processed. This handles most load-order issues automatically. You can control the fallback behaviour with the `missing_requirements_strategy` parameter:
+If a NodeSet declares a required model that has not been loaded yet, `load_from_path` and `load_from_file_list` defer it and retry after all other files are processed. This handles most load-order issues automatically. The `handle_max_deferred_strategy` parameter controls what happens if a model is still missing after the final attempt:
 
-- `"defer"` (default) — retry after other files are loaded
-- `"ignore"` — log a warning and continue
-- `"raise"` — raise `MissingRequiredModelError` immediately
+- `"ignore"` (default) — log a warning and continue
+- `"raise"` — raise `MissingRequiredModelError`
+
+`NodesetLoader.load` takes `missing_requirements_strategy` (`"defer"`, `"ignore"` or `"raise"`) for a single file.
 
 ## Accessing namespaces
 
-`load_from_path` and `load_from_file_list` return a `dict[str, Namespace]` keyed by the model name derived from the namespace URI.
+`load_from_path` and `load_from_file_list` return a `NamespaceContext`. Look namespaces up by the model name derived from the namespace URI, or by URI.
 
 ```python
-namespaces = loader.load_from_path("nodesets/")
+ctx = load_from_path("nodesets/")
 
-ua = namespaces["UA"]
-my_model = namespaces["my-types"]
+ua = ctx.get_namespace_by_name("UA")
+my_model = ctx.get_namespace_by_name("my-types")
+same_model = ctx.get_namespace_by_uri("http://yourcompany.com/my-types/")
 
 print(my_model.uri)             # "http://yourcompany.com/my-types/"
 print(my_model.namespace_array) # ["http://opcfoundation.org/UA/", "http://yourcompany.com/my-types/"]
 ```
 
-All `Namespace` instances created without an explicit `NamespaceContext` share a single default context, so cross-namespace lookups work automatically.
+A `Namespace` created without an explicit `NamespaceContext` uses a shared default context, so cross-namespace lookups still work.
 
 ## Accessing nodes
 
@@ -143,7 +141,8 @@ ua_nemo/
     loader.py            # NodesetLoader
   types/
     qualified_name.py    # QualifiedName, NamespaceMetadata
-  engine.py              # ModelBuilderEngine
+  engine.py              # ModelBuilderEngine (deprecated)
+  loading.py             # load_from_path, load_from_file_list
   xml_builder.py         # dump_model_to_xml_streaming
   node_definitions.py    # NodeClass enum and field definitions
   utils.py               # split_node_fields, normalize_bool
